@@ -9,7 +9,7 @@ function RecipeDetails(props) {
         <title>{`FM : ${props.recipeData.id}`}</title>
         <meta name="description" content={props.recipeData.description} />
       </Head>
-      <RecipeDetail
+      <RecipeDetail 
         image={props.recipeData.image}
         id={props.recipeData.id}
         ingredients={props.recipeData.ingredients}
