@@ -11,7 +11,7 @@ function MainNavigation() {
             <Link href='/'>All Recipes</Link>
           </li>
           <li>
-            <Link href='/new-meetup'>Add New Recipe</Link>
+            <Link href='/new-recipe'>Add New Recipe</Link>
           </li>
         </ul>
       </nav>

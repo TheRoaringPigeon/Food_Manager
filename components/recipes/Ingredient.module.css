@@ -3,6 +3,13 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: stretch;
+    border: 1px solid #ccc;
+    background: #ffff;
+  }
+
+  .content.invalid {
+    border-color: red;
+    background: #fbdada;
   }
 
   

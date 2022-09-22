@@ -4,7 +4,7 @@ function Ingredient(props) {
   return (
     <li>
       <Card>
-        <div className={styles.content}>
+        <div className={`${styles.content} ${props.isValid === false ? styles.invalid : ''}`}>
           <span>{props.name}</span>
           <span>{`${props.amount} ${props.measurement}`}</span>
         </div>

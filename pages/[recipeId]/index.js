@@ -3,6 +3,7 @@ import { MongoClient } from "mongodb";
 import Head from "next/head";
 import { Fragment } from "react";
 function RecipeDetails(props) {
+
   return (
     <Fragment>
       <Head>
@@ -14,6 +15,7 @@ function RecipeDetails(props) {
         id={props.recipeData.id}
         ingredients={props.recipeData.ingredients}
         instructions={props.recipeData.instructions}
+        ownedIngredients={props.ingredientData.ownedIngredients}
       />
     </Fragment>
   );
@@ -45,6 +47,14 @@ export async function getStaticProps(context) {
   const selectedRecipe = await recipeCollection.findOne({
     _id: recipeId,
   });
+
+  const ingredientCollection = db.collection("Ingredient");
+  const ingredientNamesInRecipe = selectedRecipe.ingredients.map((ingredient) => ingredient.Ingredient);
+  
+  const selectedIngredients = await ingredientCollection.find({
+    _id : {$in: ingredientNamesInRecipe}
+  }).toArray();
+
   client.close();
 
   return {
@@ -56,6 +66,9 @@ export async function getStaticProps(context) {
         description: selectedRecipe.description,
         instructions: selectedRecipe.instructions
       },
+      ingredientData: {
+        ownedIngredients: selectedIngredients
+      }
     },
   };
 }
