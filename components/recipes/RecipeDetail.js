@@ -16,6 +16,7 @@ function RecipeDetail(props) {
                     <Ingredient key={`${ingredient.id + Math.random().toString()}`} 
                         name={ingredient.Ingredient}
                         amount={ingredient.Amount}
+                        measurement={ingredient.Measurement}
                     />
                 )}
             </ul>

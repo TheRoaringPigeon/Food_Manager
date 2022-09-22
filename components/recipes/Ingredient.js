@@ -6,7 +6,7 @@ function Ingredient(props) {
       <Card>
         <div className={styles.content}>
           <span>{props.name}</span>
-          <span>{props.amount}</span>
+          <span>{`${props.amount} ${props.measurement}`}</span>
         </div>
       </Card>
     </li>
