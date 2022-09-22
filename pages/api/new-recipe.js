@@ -22,7 +22,6 @@ async function handler(req, res) {
         MeasureAmount: 0,
       }));
       let temp = await ingredientCollection.insertMany(ingredientsToAdd);
-      console.log(temp);
     }
     client.close();
     res.status(201).json({ message: "Recipe added to DB." });
