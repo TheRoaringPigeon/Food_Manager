@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+sqlalchemy[asyncio]
+asyncpg
+pydantic-settings
+alembic
+python-dotenv
+fastapi-pagination
+pre-commit
+pytest
+pytest-cov
+pytest-html
+pytest-asyncio
+httpx
+async-asgi-testclient
