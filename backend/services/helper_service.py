@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from models.models import (
-  Ingredient, Recepie
+  Ingredient, Recipe
 )
 from uuid import UUID as PYTHON_UUID
 from datetime import datetime
@@ -12,7 +12,7 @@ from utils.exceptions import FoodManagerException
 from fastapi import status
 
 logger = get_logger(__name__)
-T = TypeVar("T", Ingredient, Recepie)
+T = TypeVar("T", Ingredient, Recipe)
 
 class HelperService:
   # Check items exist
@@ -28,17 +28,17 @@ class HelperService:
 
     return True if ingredient else False
   
-  async def recepie_exists(
+  async def recipe_exists(
       self,
       async_session: async_sessionmaker[AsyncSession],
-      recepie_id: PYTHON_UUID
+      recipe_id: PYTHON_UUID
   ) -> bool:
-    statement = select(Recepie).filter(Recepie.id == recepie_id)
+    statement = select(Recipe).filter(Recipe.id == recipe_id)
     result = await async_session.execute(statement)
 
-    recepie = result.scalars().first()
+    recipe = result.scalars().first()
 
-    return True if recepie else False
+    return True if recipe else False
   
   # Make sure item name exists
   async def check_duplicate_name(
