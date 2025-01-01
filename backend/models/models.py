@@ -19,13 +19,17 @@ def time_now():
 def one_month_from_now():
   return time_now() + timedelta(days=30)
 
-"""Many-to-Many relationship between Ingredients and Recepies"""
-ingredient_used_in_recepie_table = Table(
-  'ingredient_used_in_recepie',
-  Base.metadata,
-  Column('recepie_id', ForeignKey('recepie.id'), nullable=True),
-  Column('ingredient_id', ForeignKey('ingredient.id'), nullable=True)
-)
+"""Many-to-Many relationship between Ingredients and Recipes"""
+class IngredientUsedInRecipe(Base):
+  __tablename__ = "ingredient_used_in_recipe"
+
+  recipe_id = mapped_column(ForeignKey('recipe.id'), primary_key=True)
+  ingredient_id = mapped_column(ForeignKey('ingredient.id'), primary_key=True)
+  amount_used: Mapped[float] = mapped_column(Float, nullable=False)
+
+  # Relationships for accessing ingredient and recipe directly
+  ingredient = relationship("Ingredient", back_populates="ingredient_link")
+  recipe = relationship("Recipe", back_populates="recipe_link")
 
 """
 class Ingredient:
@@ -47,28 +51,26 @@ class Ingredient(Base):
   amount_owned: Mapped[float] = mapped_column(Float, nullable=False)
   amount_type: Mapped[str] = mapped_column(String(50), nullable=False)
 
-  # Many-to-Many relationship between ingredients and recepies
-  recepies: Mapped[List["Recepie"]] = relationship(
-    secondary=ingredient_used_in_recepie_table,
-    back_populates="contains_ingredient"
+  # Many-to-Many relationship between ingredients and recipes
+  ingredient_link: Mapped[List["IngredientUsedInRecipe"]] = relationship(
+    back_populates="ingredient"
   )
 
 """
-class Recepie:
+class Recipe:
   id UUID
   name string
   description string
   instructions string
 """
 
-class Recepie(Base):
-  __tablename__ = 'recepie'
-  id: Mapped[PYTHON_UUID] = mapped_column(primary_key=True)
+class Recipe(Base):
+  __tablename__ = 'recipe'
+  id: Mapped[PYTHON_UUID] = mapped_column(primary_key=True, autoincrement=True)
   name: Mapped[str] = mapped_column(String(255), nullable=False)
   description: Mapped[str] = mapped_column(String(1000), nullable=True)
   instructions: Mapped[str] = mapped_column(String(1000), nullable=False)
 
-  contains_ingredient: Mapped[List["Ingredient"]] = relationship(
-    secondary=ingredient_used_in_recepie_table,
-    back_populates="recepies"
+  recipe_link: Mapped[List["IngredientUsedInRecipe"]] = relationship(
+    back_populates="recipe"
   )
