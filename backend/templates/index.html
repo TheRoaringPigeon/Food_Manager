@@ -9,7 +9,7 @@
     <h1>Ingredients</h1>
     <ul>
         {% for ingredient in ingredients %}
-            <li>{{ ingredient.name }}</li>
+            <li>{{ ingredient.name }}  --  {{ ingredient.amount_owned }}:{{ ingredient.amount_type }}</li>
         {% endfor %}
     </ul>
 </body>
