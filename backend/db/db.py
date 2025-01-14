@@ -73,10 +73,14 @@ async def create_database():
 
         await run_stamp()
       except asyncpg.exceptions.DuplicateDatabaseError:
-        logger.info(f"Database '{settings.database_name}' already exists.")
+        logger.info(f"Database '{settings.database_name}' already exists, running migrations.")
+        try:
+          await run_migrations()
+        except Exception as e:
+          logger.error(f"Unable to run migrations on database '{settings.database_name}'!")
       finally:
         await db_conn.close()
-      # Exit the loop on successful connection and database creation
+      # Exit the loop on successful connection and database creation 
       return
     except ConnectionRefusedError:
       retries += 1
