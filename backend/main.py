@@ -5,7 +5,10 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 import uvicorn
 
-from routers import ingredient_router
+from routers import (
+  ingredient_router,
+  recipe_router
+)
 from db.db import create_database, get_db_url, get_db
 from config import settings
 from utils.logger import get_logger
@@ -36,6 +39,7 @@ app = FastAPI(
 )
 
 app.include_router(ingredient_router.router)
+app.include_router(recipe_router.router)
 
 
 @app.get(f"{root_path_prefix}/", response_class=HTMLResponse)

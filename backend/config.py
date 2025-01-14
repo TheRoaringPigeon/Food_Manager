@@ -15,7 +15,7 @@ class Settings(BaseSettings):
   api_info_host: str = "0.0.0.0"
 
   ingredient_endpoint_tag: str = "Ingredients"
-  recipe_tag: str = "Recipes"
+  recipe_endpoint_tag: str = "Recipes"
 
   tag_metadata: list = [
     {
@@ -24,9 +24,9 @@ class Settings(BaseSettings):
       (f"Endpoints for performing CRUD & other operations for {ingredient_endpoint_tag}")
     },
     {
-      "name": recipe_tag,
+      "name": recipe_endpoint_tag,
       "description":
-      (f"Endpoints for performing CRUD & other operations for {recipe_tag}")
+      (f"Endpoints for performing CRUD & other operations for {recipe_endpoint_tag}")
     }
   ]
 
