@@ -1,0 +1,111 @@
+{
+  "chatter_id": 2,
+  "chatter_name": "Daisy",
+  "messages": [
+    {
+      "id": 1,
+      "from": "Daisy",
+      "message": "Hey! Got any new cat photos to share? I need a serotonin boost.",
+      "timestamp": "2:30 PM"
+    },
+    {
+      "id": 2,
+      "from": "You",
+      "message": "Haha actually yes! Just snapped this one of Luna mid-yawn 😹",
+      "timestamp": "2:32 PM",
+      "picture": "cat_1"
+    },
+    {
+      "id": 3,
+      "from": "Daisy",
+      "message": "STOP that’s too cute. She looks like she’s about to roar 🦁",
+      "timestamp": "2:33 PM"
+    },
+    {
+      "id": 4,
+      "from": "You",
+      "message": "Right?! She's basically a tiny lion with attitude.",
+      "timestamp": "2:35 PM"
+    },
+    {
+      "id": 5,
+      "from": "Daisy",
+      "message": "Honestly, cats have the most chaotic energy. I love it.",
+      "timestamp": "2:36 PM"
+    },
+    {
+      "id": 6,
+      "from": "You",
+      "message": "They do! Luna knocked over a plant this morning and stared at me like *I* did it.",
+      "timestamp": "2:37 PM"
+    },
+    {
+      "id": 7,
+      "from": "Daisy",
+      "message": "Classic cat move. My Max once pushed a glass off the table and looked proud.",
+      "timestamp": "2:38 PM"
+    },
+    {
+      "id": 8,
+      "from": "You",
+      "message": "Max sounds like an agent of chaos. Got a pic of him?",
+      "timestamp": "2:39 PM"
+    },
+    {
+      "id": 9,
+      "from": "Daisy",
+      "message": "Always. Here he is mid-pounce. The blur adds drama 😂",
+      "timestamp": "2:40 PM",
+      "picture": "cat_4"
+    },
+    {
+      "id": 10,
+      "from": "You",
+      "message": "He looks like he’s about to take flight 😆 10/10 form.",
+      "timestamp": "2:42 PM"
+    },
+    {
+      "id": 11,
+      "from": "Daisy",
+      "message": "He trains daily by zooming at 3am. Very dedicated.",
+      "timestamp": "2:43 PM"
+    },
+    {
+      "id": 12,
+      "from": "You",
+      "message": "Gotta respect the hustle. Zoomies are serious business.",
+      "timestamp": "2:44 PM"
+    },
+    {
+      "id": 13,
+      "from": "Daisy",
+      "message": "Agreed. Also, I caught him curled up like a cinnamon roll earlier.",
+      "timestamp": "2:45 PM",
+      "picture": "cat_2"
+    },
+    {
+      "id": 14,
+      "from": "You",
+      "message": "Omg my heart 😭 Max is pure cozy vibes in that pic.",
+      "timestamp": "2:47 PM"
+    },
+    {
+      "id": 15,
+      "from": "Daisy",
+      "message": "Right?! He's chaos and comfort all in one fluffy package.",
+      "timestamp": "2:48 PM"
+    },
+    {
+      "id": 16,
+      "from": "You",
+      "message": "Cats really are the best. We should set up a little kitty photo swap sometime.",
+      "timestamp": "2:49 PM"
+    },
+    {
+      "id": 27,
+      "from": "Daisy",
+      "message": "Yes please! Cat content is my favorite kind of content 🐾",
+      "timestamp": "2:50 PM"
+    }
+  ]
+}
