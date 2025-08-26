@@ -1,0 +1,82 @@
+{
+  "pictures": [
+    {
+      "id": "cat_1",
+      "name": "Snuggling Cat 1",
+      "filename": "cat_1.png",
+      "path": "/images/cat_1.png",
+      "description": "Two cats snuggling together",
+      "tags": ["cat", "snuggle", "companionship", "cute"],
+      "uploadDate": "2024-03-06T11:10:00Z",
+      "metadata": {
+        "breeds": ["Ragdoll", "Sphynx"],
+        "age": "2 and 3 years",
+        "photographer": "Olivia Grant"
+      }
+    },
+    {
+      "id": "cat_2",
+      "name": "Hungry Cat 2",
+      "filename": "cat_2.png",
+      "path": "/images/cat_2.png",
+      "description": "A cat waiting near its food bowl",
+      "tags": ["cat", "hungry", "food", "waiting"],
+      "uploadDate": "2024-03-07T07:25:00Z",
+      "metadata": {
+        "breed": "Scottish Fold",
+        "age": "4 years",
+        "photographer": "Luis Hernandez"
+      }
+    },
+    {
+      "id": "cat_3",
+      "name": "Sneaky Cat 3",
+      "filename": "cat_3.png",
+      "path": "/images/cat_3.png",
+      "description": "A sneaky cat hiding under the bed",
+      "tags": ["cat", "sneaky", "hiding", "mischief"],
+      "uploadDate": "2024-03-08T15:00:00Z",
+      "metadata": {
+        "breed": "Russian Blue",
+        "age": "1 year",
+        "photographer": "Mei Tanaka"
+      }
+    },
+    {
+      "id": "cat_4",
+      "name": "Focused Cat 4",
+      "filename": "cat_4.png",
+      "path": "/images/cat_4.png",
+      "description": "A focused cat watching birds through a window",
+      "tags": ["cat", "focused", "birdwatching", "alert"],
+      "uploadDate": "2024-03-09T13:50:00Z",
+      "metadata": {
+        "breed": "Abyssinian",
+        "age": "2.5 years",
+        "photographer": "David Zhang"
+      }
+    },
+    {
+      "id": "cat_5",
+      "name": "Happy Cat 5",
+      "filename": "cat_5.png",
+      "path": "/images/cat_5.png",
+      "description": "A happy cat rolling on the floor",
+      "tags": ["cat", "happy", "rolling", "funny"],
+      "uploadDate": "2024-03-10T17:40:00Z",
+      "metadata": {
+        "breed": "Tabby",
+        "age": "3 years",
+        "photographer": "Elena Petrova"
+      }
+    }
+  ],
+  "config": {
+    "version": "1.1",
+    "lastUpdated": "2024-03-10T17:40:00Z",
+    "defaultPath": "/images/",
+    "supportedFormats": ["jpg", "jpeg", "png", "gif", "webp"],
+    "maxFileSize": "10MB",
+    "autoRefresh": false
+  }
+}
