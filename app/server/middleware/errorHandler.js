@@ -10,7 +10,7 @@ const errorHandler = (err, req, res, next) => {
     let error = {
         success: false,
         message: 'Internal server error',
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+        ...(process.env.APP_ENV === 'development' && { stack: err.stack })
     };
 
     // Validation errors
