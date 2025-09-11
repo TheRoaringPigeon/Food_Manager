@@ -10,7 +10,7 @@ class RecipeController {
     // GET /api/recipes - Get all recipes
     async getAllRecipes(req, res) {
         try {
-            const recipes = recipeService.getAllRecipes();
+            const recipes = await recipeService.getAllRecipes();
             res.json({
                 success: true,
                 results: recipes,
@@ -37,7 +37,7 @@ class RecipeController {
                 });
             }
 
-            const recipe = recipeService.getRecipeById(id);
+            const recipe = await recipeService.getRecipeById(id);
             
             if (!recipe) {
                 return res.status(404).json({
@@ -62,7 +62,7 @@ class RecipeController {
     // POST /api/recipes - Create new recipe
     async createRecipe(req, res) {
         try {
-            const recipe = recipeService.createRecipe(req.body);
+            const recipe = await recipeService.createRecipe(req.body);
             
             res.status(201).json({
                 success: true,
@@ -89,7 +89,7 @@ class RecipeController {
                 });
             }
 
-            const recipe = recipeService.updateRecipe(id, req.body);
+            const recipe = await recipeService.updateRecipe(id, req.body);
             
             if (!recipe) {
                 return res.status(404).json({
@@ -123,7 +123,7 @@ class RecipeController {
                 });
             }
 
-            const deleted = recipeService.deleteRecipe(id);
+            const deleted = await recipeService.deleteRecipe(id);
             
             if (!deleted) {
                 return res.status(404).json({
@@ -157,7 +157,7 @@ class RecipeController {
                 });
             }
 
-            const recipes = recipeService.searchRecipes(query);
+            const recipes = await recipeService.searchRecipes(query);
             
             res.json({
                 success: true,

@@ -53,12 +53,7 @@ function Recipes() {
   const fetchAllRecipes = async () => {
     try {
       const response = await getAllRecipes();
-      if (response.success == true) {
-        setRecipes(response.results);
-      } else {
-        console.error("No recipes returned: ", err);
-        setRecipes([]);
-      }
+      setRecipes(response.results.recipes);
     } catch (err) {
       console.error("Failed to fetch recipe(s): ", err);
       setRecipes(dummyRecipes);

@@ -1,5 +1,0 @@
-FROM openresty/openresty:alpine
-
-COPY configs/mock-app/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
-COPY configs/mock-app/conf.d/ /usr/local/openresty/nginx/conf/conf.d/
-COPY configs/mock-app/mock-data/ /usr/local/openresty/nginx/html/mock-data/
