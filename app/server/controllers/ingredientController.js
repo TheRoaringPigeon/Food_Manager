@@ -9,6 +9,7 @@ const ingredientService = require('../services/ingredientService');
 class IngredientController {
     // GET /api/ingredients - Get all ingredients
     async getAllIngredients(req, res) {
+        console.log("all");
         try {
             const ingredients = await ingredientService.getAllIngredients();
             res.json({
@@ -27,6 +28,7 @@ class IngredientController {
 
     // GET /api/ingredients/:id - Get specific ingredient
     async getIngredientById(req, res) {
+        console.log("byId");
         try {
             const id = parseInt(req.params.id);
             
@@ -61,6 +63,7 @@ class IngredientController {
 
     // POST /api/ingredients - Create new ingredient
     async createIngredient(req, res) {
+        console.log("create");
         try {
             const ingredient = await ingredientService.createIngredient(req.body);
             
@@ -79,6 +82,7 @@ class IngredientController {
 
     // PUT /api/ingredients/:id - Update ingredient
     async updateIngredient(req, res) {
+        console.log("update");
         try {
             const id = parseInt(req.params.id);
             
@@ -113,6 +117,7 @@ class IngredientController {
 
     // DELETE /api/ingredients/:id - Delete ingredient
     async deleteIngredient(req, res) {
+        console.log("delete");
         try {
             const id = parseInt(req.params.id);
             
@@ -147,6 +152,7 @@ class IngredientController {
 
     // GET /api/ingredients/search?q=query - Search ingredients
     async searchIngredients(req, res) {
+        console.log("here");
         try {
             const query = req.query.q;
             
