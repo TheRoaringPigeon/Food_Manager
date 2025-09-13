@@ -3,17 +3,17 @@
  * Contains business logic for recipe operations
  */
 
-const Recipe = require('../models/Recipe');
-const { Op } = require('sequelize');
+const Recipe = require("../models/Recipe");
+const { Op } = require("sequelize");
 
 class RecipeService {
   // Get all recipes with optional pagination
   async getAllRecipes(page = 1, limit = 10) {
     try {
       const result = await Recipe.getAllRecipes(page, limit);
-      
+
       // Convert recipes to JSON format
-      const recipes = result.recipes.map(recipe => recipe.toJSON());
+      const recipes = result.recipes.map((recipe) => recipe.toJSON());
       return {
         recipes,
         pagination: {
@@ -21,22 +21,9 @@ class RecipeService {
           currentPage: result.currentPage,
           totalPages: result.totalPages,
           hasNext: result.hasNext,
-          hasPrev: result.hasPrev
-        }
+          hasPrev: result.hasPrev,
+        },
       };
-    } catch (error) {
-      throw new Error(`Failed to retrieve recipes: ${error.message}`);
-    }
-  }
-
-  // Get all recipes without pagination (for backward compatibility)
-  async getAllRecipesSimple() {
-    try {
-      const recipes = await Recipe.findAll({
-        order: [['updatedAt', 'DESC']]
-      });
-      
-      return recipes.map(recipe => recipe.toJSON());
     } catch (error) {
       throw new Error(`Failed to retrieve recipes: ${error.message}`);
     }
@@ -59,9 +46,9 @@ class RecipeService {
       return recipe.toJSON();
     } catch (error) {
       // Handle Sequelize validation errors
-      if (error.name === 'SequelizeValidationError') {
-        const validationErrors = error.errors.map(err => err.message);
-        throw new Error(validationErrors.join(', '));
+      if (error.name === "SequelizeValidationError") {
+        const validationErrors = error.errors.map((err) => err.message);
+        throw new Error(validationErrors.join(", "));
       }
       throw new Error(error.message);
     }
@@ -71,7 +58,7 @@ class RecipeService {
   async updateRecipe(id, data) {
     try {
       const recipe = await Recipe.findByPk(id);
-      
+
       if (!recipe) {
         return null;
       }
@@ -80,9 +67,9 @@ class RecipeService {
       return recipe.toJSON();
     } catch (error) {
       // Handle Sequelize validation errors
-      if (error.name === 'SequelizeValidationError') {
-        const validationErrors = error.errors.map(err => err.message);
-        throw new Error(validationErrors.join(', '));
+      if (error.name === "SequelizeValidationError") {
+        const validationErrors = error.errors.map((err) => err.message);
+        throw new Error(validationErrors.join(", "));
       }
       throw new Error(error.message);
     }
@@ -92,7 +79,7 @@ class RecipeService {
   async deleteRecipe(id) {
     try {
       const recipe = await Recipe.findByPk(id);
-      
+
       if (!recipe) {
         return false;
       }
@@ -108,7 +95,7 @@ class RecipeService {
   async searchRecipes(query) {
     try {
       const recipes = await Recipe.searchRecipes(query);
-      return recipes.map(recipe => recipe.toJSON());
+      return recipes.map((recipe) => recipe.toJSON());
     } catch (error) {
       throw new Error(`Search failed: ${error.message}`);
     }
@@ -120,15 +107,17 @@ class RecipeService {
       const recipes = await Recipe.findAll({
         where: {
           servings: {
-            [Op.between]: [minServings, maxServings]
-          }
+            [Op.between]: [minServings, maxServings],
+          },
         },
-        order: [['servings', 'ASC']]
+        order: [["servings", "ASC"]],
       });
 
-      return recipes.map(recipe => recipe.toJSON());
+      return recipes.map((recipe) => recipe.toJSON());
     } catch (error) {
-      throw new Error(`Failed to retrieve recipes by servings: ${error.message}`);
+      throw new Error(
+        `Failed to retrieve recipes by servings: ${error.message}`
+      );
     }
   }
 
@@ -138,38 +127,40 @@ class RecipeService {
       const recipes = await Recipe.findAll({
         where: {
           ingredients: {
-            [Op.iLike]: `%${ingredient.toLowerCase()}%`
-          }
+            [Op.iLike]: `%${ingredient.toLowerCase()}%`,
+          },
         },
-        order: [['name', 'ASC']]
+        order: [["name", "ASC"]],
       });
 
-      return recipes.map(recipe => recipe.toJSON());
+      return recipes.map((recipe) => recipe.toJSON());
     } catch (error) {
-      throw new Error(`Failed to retrieve recipes by ingredient: ${error.message}`);
+      throw new Error(
+        `Failed to retrieve recipes by ingredient: ${error.message}`
+      );
     }
   }
 
   // Get recipe statistics
   async getRecipeStats() {
     try {
-      const { fn, col } = require('sequelize');
-      
+      const { fn, col } = require("sequelize");
+
       const stats = await Recipe.findOne({
         attributes: [
-          [fn('COUNT', col('id')), 'totalRecipes'],
-          [fn('AVG', col('servings')), 'averageServings'],
-          [fn('MIN', col('servings')), 'minServings'],
-          [fn('MAX', col('servings')), 'maxServings']
+          [fn("COUNT", col("id")), "totalRecipes"],
+          [fn("AVG", col("servings")), "averageServings"],
+          [fn("MIN", col("servings")), "minServings"],
+          [fn("MAX", col("servings")), "maxServings"],
         ],
-        raw: true
+        raw: true,
       });
 
       return {
         totalRecipes: parseInt(stats.totalRecipes) || 0,
         averageServings: parseFloat(stats.averageServings) || 0,
         minServings: parseInt(stats.minServings) || 0,
-        maxServings: parseInt(stats.maxServings) || 0
+        maxServings: parseInt(stats.maxServings) || 0,
       };
     } catch (error) {
       throw new Error(`Failed to retrieve recipe statistics: ${error.message}`);
@@ -183,24 +174,26 @@ class RecipeService {
       for (const data of recipesData) {
         const validation = Recipe.validateData(data);
         if (!validation.isValid) {
-          throw new Error(`Invalid recipe data: ${validation.errors.join(', ')}`);
+          throw new Error(
+            `Invalid recipe data: ${validation.errors.join(", ")}`
+          );
         }
       }
 
       // Prepare data for bulk creation
-      const preparedData = recipesData.map(data => ({
+      const preparedData = recipesData.map((data) => ({
         name: data.name.trim(),
         cookTime: data.cookTime.trim(),
         servings: data.servings,
-        ingredients: JSON.stringify(data.ingredients.map(i => i.trim())),
-        instructions: data.instructions.trim()
+        ingredients: JSON.stringify(data.ingredients.map((i) => i.trim())),
+        instructions: data.instructions.trim(),
       }));
 
       const recipes = await Recipe.bulkCreate(preparedData, {
-        returning: true
+        returning: true,
       });
 
-      return recipes.map(recipe => recipe.toJSON());
+      return recipes.map((recipe) => recipe.toJSON());
     } catch (error) {
       throw new Error(`Failed to bulk create recipes: ${error.message}`);
     }

@@ -102,7 +102,7 @@ class Recipe extends Model {
           },
         ],
       },
-      order: [["updatedAt", "DESC"]],
+      order: [["name", "DESC"]],
     });
 
     return recipes;
