@@ -74,14 +74,9 @@ class Ingredient extends Model {
               [Op.iLike]: `%${searchTerm}%`,
             },
           },
-          {
-            expiryDate: {
-              [Op.iLike]: `%${searchTerm}%`,
-            },
-          },
         ],
       },
-      order: [["name", "DESC"]],
+      order: [["expiryDate", "ASC"], ["name", "DESC"]],
     });
 
     return ingredients;

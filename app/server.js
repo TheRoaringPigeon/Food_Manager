@@ -2,7 +2,7 @@
  * Main Server File - Updated to match your structure with PostgreSQL integration
  * Sets up Express server with PostgreSQL and Sequelize ORM
  */
-
+const { swaggerUi, specs } = require('./server/integrations/swagger');
 const express = require('express');
 const path = require('path');
 require('dotenv').config();
@@ -21,6 +21,7 @@ const recipeRoutes = require('./server/routes/recipeRoutes');
 const ingredientRoutes = require('./server/routes/ingredientRoutes');
 app.use('/api', recipeRoutes);
 app.use('/api', ingredientRoutes);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -103,10 +104,11 @@ async function startServer() {
   try {
     // Test database connection
     console.log('🔄 Testing database connection...');
-    const dbConnected = await testConnection();
-    if (!dbConnected) {
-      console.error('❌ Failed to connect to database. Exiting...');
-      process.exit(1);
+    let dbConnected = await testConnection();
+    while (!dbConnected) {
+      console.error('❌ Failed to connect to database. Retrying in 1 second...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      dbConnected = await testConnection();
     }
 
     // Initialize database (sync models)
