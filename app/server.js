@@ -18,7 +18,9 @@ app.use(express.json());
 
 // Routes
 const recipeRoutes = require('./server/routes/recipeRoutes');
+const ingredientRoutes = require('./server/routes/ingredientRoutes');
 app.use('/api', recipeRoutes);
+app.use('/api', ingredientRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

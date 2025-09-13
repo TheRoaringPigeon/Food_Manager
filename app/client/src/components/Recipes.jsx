@@ -47,7 +47,7 @@ const dummyRecipes = [
 ];
 
 function Recipes() {
-  const [recipes, setRecipes] = useState(dummyRecipes);
+  const [recipes, setRecipes] = useState([]);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
 
   const fetchAllRecipes = async () => {
