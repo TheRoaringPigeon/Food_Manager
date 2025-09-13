@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { getAllIngredients, createIngredient } from "../api/ingredient";
+import {
+  getAllIngredients,
+  createIngredient,
+  searchIngredients,
+} from "../api/ingredient";
 import "./ingredients.css";
 
 // Dummy data for ingredients
@@ -100,6 +104,7 @@ function Ingredients() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [sortBy, setSortBy] = useState("name");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [nameValid, setNameValid] = useState(true);
   const [newIngredient, setNewIngredient] = useState({
     name: "",
     category: "",
@@ -157,20 +162,46 @@ function Ingredients() {
     }));
   };
 
+  const validateName = async () => {
+    if (!newIngredient.name.trim()) {
+      setNameValid(false);
+      return;
+    }
+    try {
+      const response = await searchIngredients(newIngredient.name);
+      if (response.success) {
+        let originalName = true;
+        response.results.forEach((ingredient) => {
+          if (newIngredient.name === ingredient.name) {
+            setNewIngredient({
+              ...newIngredient,
+              name: `${ingredient.name} is already used.`,
+            });
+            originalName = false;
+          }
+        });
+        setNameValid(originalName);
+      }
+    } catch (error) {
+      console.error(error);
+      setNewIngredient({ ...newIngredient, name: "Error Checking name in DB" });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Basic validation
-    if (!newIngredient.name.trim()) {
-      alert("Please enter an ingredient name");
+    if (!nameValid) {
+      alert(
+        "The name desired was already taken. PLease either enter a new name or update the existing Ingredient."
+      );
       return;
     }
 
     try {
-      // TODO: Replace with actual API call
       const response = await createIngredient(newIngredient);
 
-      // For now, add to local state
       setIngredients((prev) => [
         ...prev,
         { ...newIngredient, id: response.results.id },
@@ -247,13 +278,21 @@ function Ingredients() {
             <form onSubmit={handleSubmit} className="create-ingredient-form">
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="name">Name *</label>
+                  <label
+                    htmlFor="name"
+                    className={
+                      nameValid ? "nameLabel-normal" : "nameLabel-error"
+                    }
+                  >
+                    Name *
+                  </label>
                   <input
                     type="text"
                     id="name"
                     name="name"
                     value={newIngredient.name}
                     onChange={handleInputChange}
+                    onBlur={validateName}
                     placeholder="e.g., Chicken Breast"
                     required
                   />
