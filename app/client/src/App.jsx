@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './App.css'
-import Recipes from './components/Recipes'
-import Ingredients from './components/Ingredients'
+import Recipes from './pages/Recipes'
+import Ingredients from './pages/Ingredients'
 
 function App() {
   const [activeTab, setActiveTab] = useState('recipes')
