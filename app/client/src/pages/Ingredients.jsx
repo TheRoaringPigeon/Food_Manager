@@ -4,7 +4,9 @@ import {
   createIngredient,
   searchIngredients,
 } from "../api/ingredient";
-import "../components/ingredients.css";
+import IngredientCard from "../components/cards/IngredientCard";
+import './ingredients.css';
+import '../components/formComponents.css';
 
 // Dummy data for ingredients
 const dummyIngredients = [
@@ -145,14 +147,6 @@ function Ingredients() {
       if (sortBy === "category") return a.category.localeCompare(b.category);
       return 0;
     });
-
-  const isExpiringSoon = (expiryDate) => {
-    const today = new Date();
-    const expiry = new Date(expiryDate);
-    const diffTime = expiry - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 3;
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -400,36 +394,14 @@ function Ingredients() {
 
       <div className="ingredients-grid">
         {filteredAndSortedIngredients.map((ingredient) => (
-          <div
+          <IngredientCard
             key={ingredient.id}
-            className={`ingredient-card ${
-              isExpiringSoon(ingredient.expiryDate) ? "expiring-soon" : ""
-            }`}
-          >
-            <div className="ingredient-header">
-              <h3>{ingredient.name}</h3>
-              <span className="category-badge">{ingredient.category}</span>
-            </div>
-            <div className="ingredient-details">
-              <div className="quantity">
-                <strong>
-                  {ingredient.quantity} {ingredient.unit}
-                </strong>
-              </div>
-              <div className="location">📍 {ingredient.location}</div>
-              <div
-                className={`expiry ${
-                  isExpiringSoon(ingredient.expiryDate) ? "warning" : ""
-                }`}
-              >
-                📅 Expires:{" "}
-                {new Date(ingredient.expiryDate).toLocaleDateString()}
-                {isExpiringSoon(ingredient.expiryDate) && (
-                  <span className="warning-text"> ⚠️ Expiring Soon!</span>
-                )}
-              </div>
-            </div>
-          </div>
+            ingredient={ingredient}
+            onClick={() => {
+              // Handle ingredient card click if needed
+              console.log('Clicked ingredient:', ingredient);
+            }}
+          />
         ))}
       </div>
     </div>

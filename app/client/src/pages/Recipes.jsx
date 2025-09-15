@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { getAllRecipes, getRecipeByID } from "../api/recipe";
-import '../components/searchBar.css'
+import RecipeCard from "../components/cards/RecipeCard";
+import '../components/searchBar.css';
+import './recipes.css';
+import '../components/formComponents.css';
 
 // Dummy data for recipes
 const dummyRecipes = [
@@ -202,17 +205,11 @@ function Recipes() {
         </div>
         <div className="recipe-cards">
           {filteredRecipes.map((recipe) => (
-            <div
+            <RecipeCard
               key={recipe.id}
-              className="recipe-card"
+              recipe={recipe}
               onClick={() => setSelectedRecipe(recipe)}
-            >
-              <h3>{recipe.name}</h3>
-              <div className="recipe-meta">
-                <span className="cook-time">🕒 {recipe.cookTime}</span>
-                <span className="servings">👥 {recipe.servings} servings</span>
-              </div>
-            </div>
+            />
           ))}
           {filteredRecipes.length === 0 && searchTerm && (
             <div className="no-results">

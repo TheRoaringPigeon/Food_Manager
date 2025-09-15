@@ -1,0 +1,123 @@
+/* Recipes Styles */
+.recipes-container {
+  display: flex;
+  gap: 2rem;
+  height: calc(100vh - 200px);
+}
+
+.recipes-list {
+  flex: 1;
+  max-width: 500px;
+}
+
+.recipes-list h2 {
+  margin-top: 0;
+  color: #2c3e50;
+}
+
+.recipe-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #6c757d;
+  align-items: center;
+}
+
+.recipe-details {
+  flex: 1;
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+}
+
+.recipe-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.recipe-header h2 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.close-button {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.close-button:hover {
+  background: #c82333;
+}
+
+.recipe-content {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
+}
+
+.ingredients-section, .instructions-section {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.ingredients-section h3, .instructions-section h3 {
+  margin-top: 0;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.ingredients-section ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.ingredients-section li {
+  background: white;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+  text-transform: capitalize;
+}
+
+.instructions-section p {
+  line-height: 1.6;
+  color: #495057;
+}
+
+/* No results message */
+.no-results {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  
+  .ingredients-section, .instructions-section {
+    background: #495057;
+  }
+  
+  .ingredients-section li {
+    background: #343a40;
+    color: #f8f9fa;
+  }
+}
