@@ -1,24 +1,18 @@
-/* Search and Add Recipe Container Styles */
-.search-and-add {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-left: auto;
-}
-
+/* Search Bar Styles */
 .search-container {
   position: relative;
+  width: 100%;
+  max-width: 300px;
 }
 
 .search-input {
+  width: 100%;
   padding: 0.75rem 1rem;
   border: 1px solid #dee2e6;
   border-radius: 8px;
-  font-size: 1rem;
-  width: 280px;
+  font-size: 0.9rem;
   background: white;
   transition: all 0.3s ease;
-  font-family: inherit;
 }
 
 .search-input:focus {
@@ -31,43 +25,11 @@
   color: #adb5bd;
 }
 
-/* No results message */
-.no-results {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 3rem 2rem;
-  text-align: center;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #dee2e6;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.no-results p {
-  color: #6c757d;
-  font-size: 1.1rem;
-  margin: 0;
-}
-
-/* Update header actions to use flexbox for proper alignment */
-.header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 2rem;
-}
-
-.header-actions h2 {
-  margin: 0;
-  color: #2c3e50;
-}
-
-/* Dark mode support for search elements */
+/* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .search-input {
-    background: #343a40;
-    border-color: #495057;
+    background: #495057;
+    border-color: #6c757d;
     color: #f8f9fa;
   }
   
@@ -78,40 +40,5 @@
   
   .search-input::placeholder {
     color: #adb5bd;
-  }
-  
-  .no-results {
-    background: #343a40;
-    border-color: #495057;
-  }
-  
-  .no-results p {
-    color: #adb5bd;
-  }
-  
-  .recipes-header h2 {
-    color: #f8f9fa;
-  }
-}
-
-/* Responsive design for search */
-@media (max-width: 768px) {
-  .recipes-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-  
-  .header-actions {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .controls {
-    justify-content: center;
-  }
-  
-  .search-input {
-    width: 100%;
   }
 }

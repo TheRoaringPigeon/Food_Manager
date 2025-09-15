@@ -1,0 +1,97 @@
+/* Ingredients Styles */
+.ingredients-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.ingredients-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.ingredients-header h2 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.controls {
+  display: flex;
+  gap: 1rem;
+}
+
+.filter-select, .sort-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: white;
+  font-size: 0.9rem;
+}
+
+.ingredients-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.ingredient-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.ingredient-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.category-badge {
+  background: #007bff;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.ingredient-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.quantity {
+  font-size: 1.1rem;
+  color: #28a745;
+}
+
+.location, .expiry {
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.expiry.warning {
+  color: #856404;
+  font-weight: 600;
+}
+
+.warning-text {
+  color: #ffc107;
+  font-weight: bold;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .ingredients-header h2, .ingredient-header h3 {
+    color: #f8f9fa;
+  }
+  
+  .filter-select, .sort-select {
+    background: #343a40;
+    color: #f8f9fa;
+    border-color: #495057;
+  }
+}
