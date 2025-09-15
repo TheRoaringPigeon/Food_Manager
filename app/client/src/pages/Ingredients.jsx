@@ -4,7 +4,7 @@ import {
   createIngredient,
   searchIngredients,
 } from "../api/ingredient";
-import "./ingredients.css";
+import "../components/ingredients.css";
 
 // Dummy data for ingredients
 const dummyIngredients = [
