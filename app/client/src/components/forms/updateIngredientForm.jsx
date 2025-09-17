@@ -1,43 +1,7 @@
 import { useState } from 'react';
 import Form from './form';
 import { updateIngredient, searchIngredients } from '../../api/ingredient';
-
-// Predefined options for dropdowns
-const CATEGORIES = [
-  "Protein",
-  "Vegetable",
-  "Grain",
-  "Dairy",
-  "Oil",
-  "Spice",
-  "Condiment",
-  "Fruit",
-  "Other",
-];
-
-const UNITS = [
-  "g",
-  "kg",
-  "lbs",
-  "oz",
-  "cup",
-  "tbsp",
-  "tsp",
-  "count",
-  "bottle",
-  "can",
-  "head",
-  "bunch",
-  "piece",
-];
-
-const LOCATIONS = [
-  "Refrigerator",
-  "Freezer",
-  "Pantry",
-  "Spice Rack",
-  "Counter",
-];
+import { CATEGORIES, UNITS, LOCATIONS } from '../../constants/ingredientConstants';
 
 const UpdateIngredientForm = ({ ingredient, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
