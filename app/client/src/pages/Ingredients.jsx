@@ -3,6 +3,7 @@ import { getAllIngredients } from "../api/ingredient";
 import IngredientCard from "../components/cards/IngredientCard";
 import AddButton from "../components/buttons/addButton";
 import IngredientForm from "../components/forms/ingredientForm";
+import UpdateIngredientForm from "../components/forms/updateIngredientForm";
 import './ingredients.css';
 
 // Dummy data for ingredients
@@ -68,6 +69,8 @@ function Ingredients() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [sortBy, setSortBy] = useState("name");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showUpdateForm, setShowUpdateForm] = useState(false);
+  const [selectedIngredient, setSelectedIngredient] = useState(null);
 
   const fetchAllIngredients = async () => {
     try {
@@ -106,8 +109,28 @@ function Ingredients() {
     setShowCreateForm(false);
   };
 
-  const handleFormCancel = () => {
+  const handleIngredientUpdated = (updatedIngredient) => {
+    setIngredients((prev) =>
+      prev.map((ingredient) =>
+        ingredient.id === updatedIngredient.id ? updatedIngredient : ingredient
+      )
+    );
+    setShowUpdateForm(false);
+    setSelectedIngredient(null);
+  };
+
+  const handleCreateFormCancel = () => {
     setShowCreateForm(false);
+  };
+
+  const handleUpdateFormCancel = () => {
+    setShowUpdateForm(false);
+    setSelectedIngredient(null);
+  };
+
+  const handleIngredientClick = (ingredient) => {
+    setSelectedIngredient(ingredient);
+    setShowUpdateForm(true);
   };
 
   return (
@@ -147,7 +170,15 @@ function Ingredients() {
       {showCreateForm && (
         <IngredientForm
           onSubmit={handleIngredientCreated}
-          onCancel={handleFormCancel}
+          onCancel={handleCreateFormCancel}
+        />
+      )}
+
+      {showUpdateForm && selectedIngredient && (
+        <UpdateIngredientForm
+          ingredient={selectedIngredient}
+          onSubmit={handleIngredientUpdated}
+          onCancel={handleUpdateFormCancel}
         />
       )}
 
@@ -156,10 +187,7 @@ function Ingredients() {
           <IngredientCard
             key={ingredient.id}
             ingredient={ingredient}
-            onClick={() => {
-              // Handle ingredient card click if needed
-              console.log('Clicked ingredient:', ingredient);
-            }}
+            onClick={() => handleIngredientClick(ingredient)}
           />
         ))}
       </div>
