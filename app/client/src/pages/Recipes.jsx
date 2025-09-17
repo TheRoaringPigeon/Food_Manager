@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { getAllRecipes, getRecipeByID } from "../api/recipe";
+import { getAllRecipes } from "../api/recipe";
 import RecipeCard from "../components/cards/RecipeCard";
+import AddButton from "../components/buttons/addButton";
+import RecipeForm from "../components/forms/recipeForm";
 import '../components/searchBar.css';
 import './recipes.css';
-import '../components/formComponents.css';
 
 // Dummy data for recipes
 const dummyRecipes = [
@@ -56,14 +57,6 @@ function Recipes() {
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [formData, setFormData] = useState({
-    name: "",
-    cookTime: "",
-    servings: "",
-    ingredients: "",
-    instructions: ""
-  });
-  const [nameError, setNameError] = useState(false);
 
   const fetchAllRecipes = async () => {
     try {
@@ -84,97 +77,17 @@ function Recipes() {
     recipe.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Check if recipe name already exists
-  const isRecipeNameTaken = (name) => {
-    return recipes.some(recipe => 
-      recipe.name.toLowerCase() === name.toLowerCase()
-    );
-  };
-
-  // Handle form input changes
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    // Check for name duplicates
-    if (name === 'name') {
-      setNameError(isRecipeNameTaken(value));
-    }
-  };
-
   // Handle search input change
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
 
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Validate required fields
-    if (!formData.name || !formData.cookTime || !formData.servings || 
-        !formData.ingredients || !formData.instructions) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    // Check for duplicate name
-    if (isRecipeNameTaken(formData.name)) {
-      setNameError(true);
-      alert('A recipe with this name already exists');
-      return;
-    }
-
-    try {
-      // Convert ingredients string to array (assuming comma-separated)
-      const ingredientsArray = formData.ingredients
-        .split(',')
-        .map(ingredient => ingredient.trim())
-        .filter(ingredient => ingredient.length > 0);
-
-      const newRecipe = {
-        id: Date.now(), // Temporary ID for dummy data
-        name: formData.name,
-        cookTime: formData.cookTime,
-        servings: parseInt(formData.servings),
-        ingredients: ingredientsArray,
-        instructions: formData.instructions
-      };
-
-      // Add to recipes list (in real app, this would be an API call)
-      setRecipes(prev => [...prev, newRecipe]);
-      
-      // Reset form and close
-      setFormData({
-        name: "",
-        cookTime: "",
-        servings: "",
-        ingredients: "",
-        instructions: ""
-      });
-      setNameError(false);
-      setShowCreateForm(false);
-      
-      alert('Recipe created successfully!');
-    } catch (error) {
-      console.error('Error creating recipe:', error);
-      alert('Failed to create recipe');
-    }
+  const handleRecipeCreated = (newRecipe) => {
+    setRecipes(prev => [...prev, newRecipe]);
+    setShowCreateForm(false);
   };
 
-  // Handle form cancellation
-  const handleCancel = () => {
-    setFormData({
-      name: "",
-      cookTime: "",
-      servings: "",
-      ingredients: "",
-      instructions: ""
-    });
-    setNameError(false);
+  const handleFormCancel = () => {
     setShowCreateForm(false);
   };
 
@@ -195,12 +108,10 @@ function Recipes() {
                 />
               </div>
             </div>
-            <button 
-              className="add-ingredient-btn"
+            <AddButton 
               onClick={() => setShowCreateForm(true)}
-            >
-              + Add Recipe
-            </button>
+              text="Add Recipe"
+            />
           </div>
         </div>
         <div className="recipe-cards">
@@ -251,111 +162,12 @@ function Recipes() {
         </div>
       )}
 
-      {/* Create Recipe Form Overlay */}
       {showCreateForm && (
-        <div className="create-form-overlay" onClick={handleCancel}>
-          <div className="create-form-container" onClick={(e) => e.stopPropagation()}>
-            <h3>Create New Recipe</h3>
-            <form className="create-ingredient-form" onSubmit={handleSubmit}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className={nameError ? "nameLabel-error" : "nameLabel-normal"}>
-                    Recipe Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="Enter recipe name"
-                    required
-                    style={{
-                      borderColor: nameError ? '#e70966' : '#dee2e6'
-                    }}
-                  />
-                  {nameError && (
-                    <small style={{ color: '#e70966' }}>
-                      A recipe with this name already exists
-                    </small>
-                  )}
-                </div>
-                <div className="form-group">
-                  <label className="nameLabel-normal">Cook Time *</label>
-                  <input
-                    type="text"
-                    name="cookTime"
-                    value={formData.cookTime}
-                    onChange={handleInputChange}
-                    placeholder="e.g., 30 minutes"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="nameLabel-normal">Servings *</label>
-                <input
-                  type="number"
-                  name="servings"
-                  value={formData.servings}
-                  onChange={handleInputChange}
-                  placeholder="Number of servings"
-                  min="1"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="nameLabel-normal">Ingredients *</label>
-                <textarea
-                  name="ingredients"
-                  value={formData.ingredients}
-                  onChange={handleInputChange}
-                  placeholder="Enter ingredients separated by commas (e.g., flour, eggs, milk)"
-                  required
-                  rows="3"
-                  style={{
-                    padding: '0.75rem',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    fontFamily: 'inherit',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="nameLabel-normal">Instructions *</label>
-                <textarea
-                  name="instructions"
-                  value={formData.instructions}
-                  onChange={handleInputChange}
-                  placeholder="Enter cooking instructions..."
-                  required
-                  rows="5"
-                  style={{
-                    padding: '0.75rem',
-                    border: '1px solid #dee2e6',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    fontFamily: 'inherit',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-
-              <div className="form-actions">
-                <button type="button" className="cancel-btn" onClick={handleCancel}>
-                  Cancel
-                </button>
-                <button type="submit" className="submit-btn">
-                  Create Recipe
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <RecipeForm
+          onSubmit={handleRecipeCreated}
+          onCancel={handleFormCancel}
+          existingRecipes={recipes}
+        />
       )}
     </div>
   );
