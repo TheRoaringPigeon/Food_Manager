@@ -3,6 +3,7 @@ import { getAllRecipes } from "../api/recipe";
 import RecipeCard from "../components/cards/RecipeCard";
 import AddButton from "../components/buttons/addButton";
 import RecipeForm from "../components/forms/recipeForm";
+import RecipeDetails from "../components/details/recipeDetails";
 import '../components/searchBar.css';
 import './recipes.css';
 
@@ -91,6 +92,10 @@ function Recipes() {
     setShowCreateForm(false);
   };
 
+  const handleRecipeClose = () => {
+    setSelectedRecipe(null);
+  };
+
   return (
     <div className="recipes-container">
       <div className="recipes-list">
@@ -130,37 +135,10 @@ function Recipes() {
         </div>
       </div>
 
-      {selectedRecipe && (
-        <div className="recipe-details">
-          <div className="recipe-header">
-            <h2>{selectedRecipe.name}</h2>
-            <button
-              className="close-button"
-              onClick={() => setSelectedRecipe(null)}
-            >
-              ✕
-            </button>
-          </div>
-          <div className="recipe-meta">
-            <span>🕒 Cook Time: {selectedRecipe.cookTime}</span>
-            <span>👥 Servings: {selectedRecipe.servings}</span>
-          </div>
-          <div className="recipe-content">
-            <div className="ingredients-section">
-              <h3>Ingredients</h3>
-              <ul>
-                {selectedRecipe.ingredients.map((ingredient, index) => (
-                  <li key={index}>{ingredient}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="instructions-section">
-              <h3>Instructions</h3>
-              <p>{selectedRecipe.instructions}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      <RecipeDetails 
+        recipe={selectedRecipe} 
+        onClose={handleRecipeClose} 
+      />
 
       {showCreateForm && (
         <RecipeForm
