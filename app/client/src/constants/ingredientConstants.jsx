@@ -1,4 +1,3 @@
-// Predefined options for dropdowns
 export const CATEGORIES = [
   "Protein",
   "Vegetable",

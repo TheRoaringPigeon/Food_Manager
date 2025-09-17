@@ -2,67 +2,11 @@ import { useState, useEffect } from "react";
 import { getAllIngredients } from "../api/ingredient";
 import IngredientCard from "../components/cards/IngredientCard";
 import AddButton from "../components/buttons/addButton";
-import IngredientForm from "../components/forms/ingredientForm";
+import IngredientForm from "../components/forms/addIngredientForm";
 import UpdateIngredientForm from "../components/forms/updateIngredientForm";
 import './ingredients.css';
+import { dummyIngredients } from "../constants/dummyIngredientData";
 
-// Dummy data for ingredients
-const dummyIngredients = [
-  {
-    id: 1,
-    name: "Chicken Breast",
-    category: "Protein",
-    quantity: 2,
-    unit: "lbs",
-    expiryDate: "2024-09-15",
-    location: "Refrigerator",
-  },
-  {
-    id: 2,
-    name: "Broccoli",
-    category: "Vegetable",
-    quantity: 1,
-    unit: "head",
-    expiryDate: "2024-09-12",
-    location: "Refrigerator",
-  },
-  {
-    id: 3,
-    name: "Spaghetti",
-    category: "Grain",
-    quantity: 500,
-    unit: "g",
-    expiryDate: "2025-03-20",
-    location: "Pantry",
-  },
-  {
-    id: 4,
-    name: "Parmesan Cheese",
-    category: "Dairy",
-    quantity: 200,
-    unit: "g",
-    expiryDate: "2024-10-01",
-    location: "Refrigerator",
-  },
-  {
-    id: 5,
-    name: "Olive Oil",
-    category: "Oil",
-    quantity: 1,
-    unit: "bottle",
-    expiryDate: "2025-06-15",
-    location: "Pantry",
-  },
-  {
-    id: 6,
-    name: "Eggs",
-    category: "Protein",
-    quantity: 12,
-    unit: "count",
-    expiryDate: "2024-09-18",
-    location: "Refrigerator",
-  },
-];
 
 function Ingredients() {
   const [ingredients, setIngredients] = useState([]);
