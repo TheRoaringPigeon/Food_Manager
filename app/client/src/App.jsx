@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import Recipes from './pages/Recipes'
 import Ingredients from './pages/Ingredients'
+import TabButton from './components/buttons/tabButton'
 
 function App() {
   const [activeTab, setActiveTab] = useState('recipes')
@@ -11,18 +12,18 @@ function App() {
       <header className="app-header">
         <h1>Food Manager</h1>
         <nav className="tab-nav">
-          <button 
-            className={`tab-button ${activeTab === 'recipes' ? 'active' : ''}`}
+          <TabButton 
+            isActive={activeTab === 'recipes'}
             onClick={() => setActiveTab('recipes')}
           >
             Recipes
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'ingredients' ? 'active' : ''}`}
+          </TabButton>
+          <TabButton 
+            isActive={activeTab === 'ingredients'}
             onClick={() => setActiveTab('ingredients')}
           >
             Ingredients
-          </button>
+          </TabButton>
         </nav>
       </header>
       <main className="main-content">

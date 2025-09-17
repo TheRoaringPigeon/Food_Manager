@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
-import {
-  getAllIngredients,
-  createIngredient,
-  searchIngredients,
-} from "../api/ingredient";
+import { getAllIngredients } from "../api/ingredient";
 import IngredientCard from "../components/cards/IngredientCard";
+import AddButton from "../components/buttons/addButton";
+import IngredientForm from "../components/forms/ingredientForm";
 import './ingredients.css';
-import '../components/formComponents.css';
 
 // Dummy data for ingredients
 const dummyIngredients = [
@@ -66,55 +63,11 @@ const dummyIngredients = [
   },
 ];
 
-// Predefined options for dropdowns
-const CATEGORIES = [
-  "Protein",
-  "Vegetable",
-  "Grain",
-  "Dairy",
-  "Oil",
-  "Spice",
-  "Condiment",
-  "Fruit",
-  "Other",
-];
-const UNITS = [
-  "g",
-  "kg",
-  "lbs",
-  "oz",
-  "cup",
-  "tbsp",
-  "tsp",
-  "count",
-  "bottle",
-  "can",
-  "head",
-  "bunch",
-  "piece",
-];
-const LOCATIONS = [
-  "Refrigerator",
-  "Freezer",
-  "Pantry",
-  "Spice Rack",
-  "Counter",
-];
-
 function Ingredients() {
   const [ingredients, setIngredients] = useState([]);
   const [filterCategory, setFilterCategory] = useState("all");
   const [sortBy, setSortBy] = useState("name");
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [nameValid, setNameValid] = useState(true);
-  const [newIngredient, setNewIngredient] = useState({
-    name: "",
-    category: "",
-    quantity: "",
-    unit: "",
-    expiryDate: "",
-    location: "",
-  });
 
   const fetchAllIngredients = async () => {
     try {
@@ -148,84 +101,12 @@ function Ingredients() {
       return 0;
     });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewIngredient((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const handleIngredientCreated = (newIngredient) => {
+    setIngredients((prev) => [...prev, newIngredient]);
+    setShowCreateForm(false);
   };
 
-  const validateName = async () => {
-    if (!newIngredient.name.trim()) {
-      setNameValid(false);
-      return;
-    }
-    try {
-      const response = await searchIngredients(newIngredient.name);
-      if (response.success) {
-        let originalName = true;
-        response.results.forEach((ingredient) => {
-          if (newIngredient.name === ingredient.name) {
-            setNewIngredient({
-              ...newIngredient,
-              name: `${ingredient.name} is already used.`,
-            });
-            originalName = false;
-          }
-        });
-        setNameValid(originalName);
-      }
-    } catch (error) {
-      console.error(error);
-      setNewIngredient({ ...newIngredient, name: "Error Checking name in DB" });
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    // Basic validation
-    if (!nameValid) {
-      alert(
-        "The name desired was already taken. PLease either enter a new name or update the existing Ingredient."
-      );
-      return;
-    }
-
-    try {
-      const response = await createIngredient(newIngredient);
-
-      setIngredients((prev) => [
-        ...prev,
-        { ...newIngredient, id: response.results.id },
-      ]);
-
-      // Reset form and close
-      setNewIngredient({
-        name: "",
-        category: "",
-        quantity: "",
-        unit: "",
-        expiryDate: "",
-        location: "",
-      });
-      setShowCreateForm(false);
-    } catch (err) {
-      console.error("Failed to create ingredient: ", err);
-      alert("Failed to create ingredient. Please try again.");
-    }
-  };
-
-  const handleCancel = () => {
-    setNewIngredient({
-      name: "",
-      category: "",
-      quantity: "",
-      unit: "",
-      expiryDate: "",
-      location: "",
-    });
+  const handleFormCancel = () => {
     setShowCreateForm(false);
   };
 
@@ -256,140 +137,18 @@ function Ingredients() {
               <option value="category">Sort by Category</option>
             </select>
           </div>
-          <button
+          <AddButton 
             onClick={() => setShowCreateForm(true)}
-            className="add-ingredient-btn"
-          >
-            + Add Ingredient
-          </button>
+            text="Add Ingredient"
+          />
         </div>
       </div>
 
       {showCreateForm && (
-        <div className="create-form-overlay">
-          <div className="create-form-container">
-            <h3>Add New Ingredient</h3>
-            <form onSubmit={handleSubmit} className="create-ingredient-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label
-                    htmlFor="name"
-                    className={
-                      nameValid ? "nameLabel-normal" : "nameLabel-error"
-                    }
-                  >
-                    Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={newIngredient.name}
-                    onChange={handleInputChange}
-                    onBlur={validateName}
-                    placeholder="e.g., Chicken Breast"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="category">Category *</label>
-                  <select
-                    id="category"
-                    name="category"
-                    value={newIngredient.category}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select category</option>
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="quantity">Quantity *</label>
-                  <input
-                    type="number"
-                    id="quantity"
-                    name="quantity"
-                    value={newIngredient.quantity}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="any"
-                    placeholder="e.g., 2"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="unit">Unit *</label>
-                  <select
-                    id="unit"
-                    name="unit"
-                    value={newIngredient.unit}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select unit</option>
-                    {UNITS.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="expiryDate">Expiry Date *</label>
-                  <input
-                    type="date"
-                    id="expiryDate"
-                    name="expiryDate"
-                    value={newIngredient.expiryDate}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="location">Location *</label>
-                  <select
-                    id="location"
-                    name="location"
-                    value={newIngredient.location}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select location</option>
-                    {LOCATIONS.map((loc) => (
-                      <option key={loc} value={loc}>
-                        {loc}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="cancel-btn"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="submit-btn">
-                  Add Ingredient
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <IngredientForm
+          onSubmit={handleIngredientCreated}
+          onCancel={handleFormCancel}
+        />
       )}
 
       <div className="ingredients-grid">
