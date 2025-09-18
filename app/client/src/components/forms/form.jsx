@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './form.css';
+import FormActions from './formActions';
 
 const Form = ({ 
   title, 
@@ -176,18 +177,11 @@ const Form = ({
         <form onSubmit={handleSubmit} className="create-ingredient-form">
           {renderFormRows()}
           
-          <div className="form-actions">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="cancel-btn"
-            >
-              {cancelText}
-            </button>
-            <button type="submit" className="submit-btn">
-              {submitText}
-            </button>
-          </div>
+          <FormActions
+            onCancel={onCancel}
+            cancelText={cancelText}
+            submitText={submitText}
+          />
         </form>
       </div>
     </div>

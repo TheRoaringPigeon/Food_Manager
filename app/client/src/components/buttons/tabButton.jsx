@@ -6,16 +6,18 @@ const TabButton = ({
   onClick,
   isActive = false,
   disabled = false,
+  className = "",
   ...props
 }) => {
   const activeClass = isActive ? "active" : "";
+  const combinedClassName = [className, activeClass].filter(Boolean).join(" ");
   
   return (
     <Button
       onClick={onClick}
       disabled={disabled}
       variant="tab"
-      className={activeClass}
+      className={combinedClassName}
       {...props}
     >
       {children}
