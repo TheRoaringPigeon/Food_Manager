@@ -1,0 +1,33 @@
+/* ScrollBox Styles */
+.scroll-box {
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100%;
+  padding-right: 8px;
+  margin-right: -8px;
+}
+
+/* Custom scrollbar styles */
+.scroll-box::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll-box::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.scroll-box::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.scroll-box::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Firefox scrollbar styles */
+.scroll-box {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}

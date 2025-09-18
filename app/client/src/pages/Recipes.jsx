@@ -2,17 +2,19 @@ import { useState, useEffect } from "react";
 import { getAllRecipes } from "../api/recipe";
 import RecipeCard from "../components/cards/RecipeCard";
 import AddButton from "../components/buttons/addButton";
-import RecipeForm from "../components/forms/recipeForm";
-import RecipeDetails from "../components/details/recipeDetails";
-import '../components/searchBar.css';
+import RecipeForm from "../components/forms/addRecipeForm";
+import UpdateRecipeForm from "../components/forms/updateRecipeForm";
+import ScrollBox from "../components/scrollBox/scrollBox";
+import SearchBar from "../components/searchBars/searchBar";
 import './recipes.css';
 import { dummyRecipes } from "../constants/dummyRecipeData";
 
 function Recipes() {
   const [recipes, setRecipes] = useState([]);
-  const [selectedRecipe, setSelectedRecipe] = useState(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showUpdateForm, setShowUpdateForm] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
 
   const fetchAllRecipes = async () => {
     try {
@@ -28,12 +30,10 @@ function Recipes() {
     fetchAllRecipes();
   }, []);
 
-  // Filter recipes based on search term
   const filteredRecipes = recipes.filter(recipe =>
     recipe.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Handle search input change
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
@@ -43,43 +43,72 @@ function Recipes() {
     setShowCreateForm(false);
   };
 
-  const handleFormCancel = () => {
+  const handleRecipeUpdated = (updatedRecipe) => {
+    setRecipes((prev) =>
+      prev.map((recipe) =>
+        recipe.id === updatedRecipe.id ? updatedRecipe : recipe
+      )
+    );
+    setShowUpdateForm(false);
+    setSelectedRecipe(null);
+  };
+
+  const handleCreateFormCancel = () => {
     setShowCreateForm(false);
   };
 
-  const handleRecipeClose = () => {
+  const handleUpdateFormCancel = () => {
+    setShowUpdateForm(false);
     setSelectedRecipe(null);
+  };
+
+  const handleRecipeClick = (recipe) => {
+    setSelectedRecipe(recipe);
+    setShowUpdateForm(true);
   };
 
   return (
     <div className="recipes-container">
-      <div className="recipes-list">
-        <div className="recipes-header">
-          <h2>Recipes ({filteredRecipes.length})</h2>
-          <div className="header-actions">
-            <div className="controls">
-              <div className="search-container">
-                <input
-                  type="text"
-                  placeholder="Search recipes by name..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="search-input"
-                />
-              </div>
-            </div>
-            <AddButton 
-              onClick={() => setShowCreateForm(true)}
-              text="Add Recipe"
+      <div className="recipes-header">
+        <h2>Recipes ({filteredRecipes.length})</h2>
+        <div className="header-actions">
+          <div className="controls">
+            <SearchBar
+              value={searchTerm}
+              onChange={handleSearchChange}
+              placeholder="Search recipes by name..."
             />
           </div>
+          <AddButton 
+            onClick={() => setShowCreateForm(true)}
+            text="Add Recipe"
+          />
         </div>
-        <div className="recipe-cards">
+      </div>
+
+      {showCreateForm && (
+        <RecipeForm
+          onSubmit={handleRecipeCreated}
+          onCancel={handleCreateFormCancel}
+          existingRecipes={recipes}
+        />
+      )}
+
+      {showUpdateForm && selectedRecipe && (
+        <UpdateRecipeForm
+          recipe={selectedRecipe}
+          onSubmit={handleRecipeUpdated}
+          onCancel={handleUpdateFormCancel}
+        />
+      )}
+      
+      <ScrollBox className="recipes-grid-container">
+        <div className="recipes-grid">
           {filteredRecipes.map((recipe) => (
             <RecipeCard
               key={recipe.id}
               recipe={recipe}
-              onClick={() => setSelectedRecipe(recipe)}
+              onClick={() => handleRecipeClick(recipe)}
             />
           ))}
           {filteredRecipes.length === 0 && searchTerm && (
@@ -88,20 +117,7 @@ function Recipes() {
             </div>
           )}
         </div>
-      </div>
-
-      <RecipeDetails 
-        recipe={selectedRecipe} 
-        onClose={handleRecipeClose} 
-      />
-
-      {showCreateForm && (
-        <RecipeForm
-          onSubmit={handleRecipeCreated}
-          onCancel={handleFormCancel}
-          existingRecipes={recipes}
-        />
-      )}
+      </ScrollBox>
     </div>
   );
 }

@@ -4,14 +4,16 @@ import IngredientCard from "../components/cards/IngredientCard";
 import AddButton from "../components/buttons/addButton";
 import IngredientForm from "../components/forms/addIngredientForm";
 import UpdateIngredientForm from "../components/forms/updateIngredientForm";
-import './ingredients.css';
+import "./ingredients.css";
 import { dummyIngredients } from "../constants/dummyIngredientData";
-
+import ScrollBox from "../components/scrollBox/scrollBox";
+import SearchBar from "../components/searchBars/searchBar";
 
 function Ingredients() {
   const [ingredients, setIngredients] = useState([]);
   const [filterCategory, setFilterCategory] = useState("all");
   const [sortBy, setSortBy] = useState("name");
+  const [searchTerm, setSearchTerm] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState(null);
@@ -38,7 +40,8 @@ function Ingredients() {
   const filteredAndSortedIngredients = ingredients
     .filter(
       (ingredient) =>
-        filterCategory === "all" || ingredient.category === filterCategory
+        (filterCategory === "all" || ingredient.category === filterCategory) &&
+        ingredient.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
       if (sortBy === "name") return a.name.localeCompare(b.name);
@@ -63,6 +66,10 @@ function Ingredients() {
     setSelectedIngredient(null);
   };
 
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
   const handleCreateFormCancel = () => {
     setShowCreateForm(false);
   };
@@ -80,9 +87,14 @@ function Ingredients() {
   return (
     <div className="ingredients-container">
       <div className="ingredients-header">
-        <h2>Ingredients ({ingredients.length})</h2>
+        <h2>Ingredients ({filteredAndSortedIngredients.length})</h2>
         <div className="header-actions">
           <div className="controls">
+            <SearchBar
+              value={searchTerm}
+              onChange={handleSearchChange}
+              placeholder="Search ingredients by name..."
+            />
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
@@ -104,7 +116,7 @@ function Ingredients() {
               <option value="category">Sort by Category</option>
             </select>
           </div>
-          <AddButton 
+          <AddButton
             onClick={() => setShowCreateForm(true)}
             text="Add Ingredient"
           />
@@ -126,15 +138,17 @@ function Ingredients() {
         />
       )}
 
-      <div className="ingredients-grid">
-        {filteredAndSortedIngredients.map((ingredient) => (
-          <IngredientCard
-            key={ingredient.id}
-            ingredient={ingredient}
-            onClick={() => handleIngredientClick(ingredient)}
-          />
-        ))}
-      </div>
+      <ScrollBox className="ingredients-grid-container">
+        <div className="ingredients-grid">
+          {filteredAndSortedIngredients.map((ingredient) => (
+            <IngredientCard
+              key={ingredient.id}
+              ingredient={ingredient}
+              onClick={() => handleIngredientClick(ingredient)}
+            />
+          ))}
+        </div>
+      </ScrollBox>
     </div>
   );
 }
