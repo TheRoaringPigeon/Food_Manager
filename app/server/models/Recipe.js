@@ -1,6 +1,7 @@
 /**
  * Recipe Model with Sequelize ORM
  * Handles data structure, validation, and database operations
+ * Now with proper ingredient associations
  */
 
 const { DataTypes, Model } = require("sequelize");
@@ -9,13 +10,6 @@ const { sequelize } = require("../integrations/db");
 class Recipe extends Model {
   toJSON() {
     const values = { ...this.get() };
-    if (typeof values.ingredients === "string") {
-      try {
-        values.ingredients = JSON.parse(values.ingredients);
-      } catch (error) {
-        values.ingredients = [];
-      }
-    }
     return values;
   }
 
@@ -42,15 +36,23 @@ class Recipe extends Model {
       }
     }
 
+    // Validate ingredients array if provided
     if (data.ingredients !== undefined) {
-      if (
-        !Array.isArray(data.ingredients) ||
-        data.ingredients.length === 0 ||
-        !data.ingredients.every((i) => typeof i === "string" && i.trim() !== "")
-      ) {
-        errors.push(
-          "Ingredients must be a non-empty array of non-empty strings"
-        );
+      if (!Array.isArray(data.ingredients) || data.ingredients.length === 0) {
+        errors.push("Ingredients must be a non-empty array");
+      } else {
+        data.ingredients.forEach((ingredient, index) => {
+          if (typeof ingredient !== 'object' || ingredient === null) {
+            errors.push(`Ingredient at index ${index} must be an object`);
+          } else {
+            if (!ingredient.ingredientId || typeof ingredient.ingredientId !== 'number') {
+              errors.push(`Ingredient at index ${index} must have a valid ingredientId`);
+            }
+            if (!ingredient.recipeQuantity || typeof ingredient.recipeQuantity !== 'string' || ingredient.recipeQuantity.trim() === '') {
+              errors.push(`Ingredient at index ${index} must have a valid recipeQuantity`);
+            }
+          }
+        });
       }
     }
 
@@ -66,20 +68,45 @@ class Recipe extends Model {
       throw new Error(validation.errors.join(", "));
     }
 
-    const recipeData = {
-      name: data.name.trim(),
-      cookTime: data.cookTime.trim(),
-      servings: data.servings,
-      ingredients: JSON.stringify(data.ingredients.map((i) => i.trim())),
-      instructions: data.instructions.trim(),
-    };
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const recipeData = {
+        name: data.name.trim(),
+        cookTime: data.cookTime.trim(),
+        servings: data.servings,
+        instructions: data.instructions.trim(),
+      };
 
-    const recipe = await Recipe.create(recipeData);
-    return recipe;
+      const recipe = await Recipe.create(recipeData, { transaction });
+
+      // Add ingredients if provided
+      if (data.ingredients && data.ingredients.length > 0) {
+        const RecipeIngredient = require('./RecipeIngredient');
+        const ingredientData = data.ingredients.map(ingredient => ({
+          recipeId: recipe.id,
+          ingredientId: ingredient.ingredientId,
+          recipeQuantity: ingredient.recipeQuantity.trim(),
+          recipeUnit: ingredient.recipeUnit?.trim() || null,
+          isOptional: ingredient.isOptional || false,
+          notes: ingredient.notes?.trim() || null
+        }));
+
+        await RecipeIngredient.bulkCreate(ingredientData, { transaction });
+      }
+
+      await transaction.commit();
+      return recipe;
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   }
 
   static async searchRecipes(query) {
     const { Op } = require("sequelize");
+    const Ingredient = require('./Ingredient');
+    const RecipeIngredient = require('./RecipeIngredient');
     const searchTerm = query.toLowerCase();
 
     const recipes = await Recipe.findAll({
@@ -95,13 +122,32 @@ class Recipe extends Model {
               [Op.iLike]: `%${searchTerm}%`,
             },
           },
-          {
-            ingredients: {
-              [Op.iLike]: `%${searchTerm}%`,
-            },
-          },
         ],
       },
+      include: [
+        {
+          model: Ingredient,
+          as: 'ingredients', // Use the alias from associations
+          through: { 
+            attributes: ['recipeQuantity', 'recipeUnit', 'isOptional', 'notes']
+          },
+          where: {
+            [Op.or]: [
+              {
+                name: {
+                  [Op.iLike]: `%${searchTerm}%`,
+                },
+              },
+              {
+                category: {
+                  [Op.iLike]: `%${searchTerm}%`,
+                },
+              },
+            ],
+          },
+          required: false // LEFT JOIN to also get recipes without matching ingredients
+        }
+      ],
       order: [["name", "DESC"]],
     });
 
@@ -110,11 +156,23 @@ class Recipe extends Model {
 
   static async getAllRecipes(page = 1, limit = 10) {
     const offset = (page - 1) * limit;
+    const Ingredient = require('./Ingredient');
+    const RecipeIngredient = require('./RecipeIngredient');
 
     const { count, rows } = await Recipe.findAndCountAll({
+      include: [
+        {
+          model: Ingredient,
+          as: 'ingredients', // Use the alias from associations
+          through: { 
+            attributes: ['recipeQuantity', 'recipeUnit', 'isOptional', 'notes']
+          }
+        }
+      ],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [["name", "DESC"]],
+      distinct: true, // Important for accurate count with includes
     });
 
     return {
@@ -133,24 +191,92 @@ class Recipe extends Model {
       throw new Error(validation.errors.join(", "));
     }
 
-    const updateData = {};
-    if (data.name !== undefined) updateData.name = data.name.trim();
-    if (data.cookTime !== undefined) updateData.cookTime = data.cookTime.trim();
-    if (data.servings !== undefined) updateData.servings = data.servings;
-    if (data.ingredients !== undefined) {
-      updateData.ingredients = JSON.stringify(
-        data.ingredients.map((i) => i.trim())
-      );
-    }
-    if (data.instructions !== undefined)
-      updateData.instructions = data.instructions.trim();
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const updateData = {};
+      if (data.name !== undefined) updateData.name = data.name.trim();
+      if (data.cookTime !== undefined) updateData.cookTime = data.cookTime.trim();
+      if (data.servings !== undefined) updateData.servings = data.servings;
+      if (data.instructions !== undefined) updateData.instructions = data.instructions.trim();
 
-    await this.update(updateData);
-    return this;
+      await this.update(updateData, { transaction });
+
+      // Update ingredients if provided
+      if (data.ingredients !== undefined) {
+        const RecipeIngredient = require('./RecipeIngredient');
+        
+        // Remove existing ingredients
+        await RecipeIngredient.destroy({
+          where: { recipeId: this.id },
+          transaction
+        });
+
+        // Add new ingredients
+        if (data.ingredients.length > 0) {
+          const ingredientData = data.ingredients.map(ingredient => ({
+            recipeId: this.id,
+            ingredientId: ingredient.ingredientId,
+            recipeQuantity: ingredient.recipeQuantity.trim(),
+            recipeUnit: ingredient.recipeUnit?.trim() || null,
+            isOptional: ingredient.isOptional || false,
+            notes: ingredient.notes?.trim() || null
+          }));
+
+          await RecipeIngredient.bulkCreate(ingredientData, { transaction });
+        }
+      }
+
+      await transaction.commit();
+      return this;
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  async addIngredient(ingredientId, recipeQuantity, options = {}) {
+    const RecipeIngredient = require('./RecipeIngredient');
+    
+    return await RecipeIngredient.create({
+      recipeId: this.id,
+      ingredientId,
+      recipeQuantity,
+      recipeUnit: options.recipeUnit || null,
+      isOptional: options.isOptional || false,
+      notes: options.notes || null
+    });
+  }
+
+  async removeIngredient(ingredientId) {
+    const RecipeIngredient = require('./RecipeIngredient');
+    
+    return await RecipeIngredient.destroy({
+      where: {
+        recipeId: this.id,
+        ingredientId
+      }
+    });
+  }
+
+  async getIngredientsWithDetails() {
+    const Ingredient = require('./Ingredient');
+    const RecipeIngredient = require('./RecipeIngredient');
+    
+    return await Ingredient.findAll({
+      include: [{
+        model: Recipe,
+        where: { id: this.id },
+        through: { 
+          model: RecipeIngredient,
+          attributes: ['recipeQuantity', 'recipeUnit', 'isOptional', 'notes']
+        }
+      }]
+    });
   }
 }
 
-// Initialize the model with Sequelize
+// Initialize the model with Sequelize (removed ingredients field)
 Recipe.init(
   {
     id: {
@@ -191,25 +317,6 @@ Recipe.init(
         },
         isInt: {
           msg: "Servings must be a whole number",
-        },
-      },
-    },
-    ingredients: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      validate: {
-        notEmpty: {
-          msg: "Ingredients cannot be empty",
-        },
-        isValidJSON(value) {
-          try {
-            const parsed = JSON.parse(value);
-            if (!Array.isArray(parsed) || parsed.length === 0) {
-              throw new Error("Ingredients must be a non-empty array");
-            }
-          } catch (error) {
-            throw new Error("Ingredients must be valid JSON array");
-          }
         },
       },
     },
