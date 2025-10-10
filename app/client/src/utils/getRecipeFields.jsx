@@ -23,15 +23,6 @@ export const getRecipeFields = (formData, validateName) => [
     required: true,
   },
   {
-    name: "ingredients",
-    label: "Ingredients",
-    type: "textarea",
-    placeholder:
-      "Enter ingredients separated by commas (e.g., flour, eggs, milk)",
-    required: true,
-    rows: 3,
-  },
-  {
     name: "instructions",
     label: "Instructions",
     type: "textarea",
