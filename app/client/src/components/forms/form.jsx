@@ -12,7 +12,8 @@ const Form = ({
   formData,
   setFormData,
   errors = {},
-  validate
+  validate,
+  children // Add children prop to allow custom components
 }) => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -176,6 +177,9 @@ const Form = ({
         <h3>{title}</h3>
         <form onSubmit={handleSubmit} className="create-ingredient-form">
           {renderFormRows()}
+          
+          {/* Render custom children components (like IngredientManager) */}
+          {children}
           
           <FormActions
             onCancel={onCancel}

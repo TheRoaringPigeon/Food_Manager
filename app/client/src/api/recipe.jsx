@@ -36,3 +36,51 @@ export async function searchRecipes(query) {
 
     return response.data;
 }
+
+export async function addIngredientToRecipe(recipeId, ingredientData) {
+    const response = await backendApiClient().post(`/recipes/${recipeId}/ingredients`, ingredientData);
+    return response.data;
+}
+
+export async function removeIngredientFromRecipe(recipeId, ingredientId) {
+    const response = await backendApiClient().delete(`/recipes/${recipeId}/ingredients/${ingredientId}`);
+    return response.data;
+}
+
+export async function getRecipesByServings(minServings, maxServings) {
+    const response = await backendApiClient().get('/recipes/by-servings', {
+        params: { min: minServings, max: maxServings }
+    });
+    return response.data;
+}
+
+export async function getRecipesByIngredient(ingredientName) {
+    const response = await backendApiClient().get('/recipes/by-ingredient', {
+        params: { name: ingredientName }
+    });
+    return response.data;
+}
+
+export async function getRecipesByIngredientId(ingredientId) {
+    const response = await backendApiClient().get(`/recipes/by-ingredient-id/${ingredientId}`);
+    return response.data;
+}
+
+export async function getRecipeStats() {
+    const response = await backendApiClient().get('/recipes/stats');
+    return response.data;
+}
+
+export async function getRecipesWithAvailableIngredients(availableIngredientIds) {
+    const response = await backendApiClient().post('/recipes/makable', {
+        availableIngredientIds
+    });
+    return response.data;
+}
+
+export async function bulkCreateRecipes(recipes) {
+    const response = await backendApiClient().post('/recipes/bulk', {
+        recipes
+    });
+    return response.data;
+}

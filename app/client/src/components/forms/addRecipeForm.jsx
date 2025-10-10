@@ -1,27 +1,36 @@
-import { createRecipe } from '../../api/recipe';
-import { useRecipeForm } from '../..//hooks/useRecipeForm';
-import { getRecipeFields } from '../../utils/getRecipeFields';
-import Form from './form';
+import { createRecipe } from "../../api/recipe";
+import { useRecipeForm } from "../../hooks/useRecipeForm";
+import { getRecipeFields } from "../../utils/getRecipeFields";
+import Form from "./form";
+import IngredientManager from "../../utils/ingredientManager";
 
-const RecipeForm = ({ onSubmit, onCancel, existingRecipes = [] }) => {
-  const {
-    formData,
-    setFormData,
-    errors,
-    validateName,
-    resetForm
-  } = useRecipeForm({}, existingRecipes);
+const RecipeForm = ({
+  onSubmit,
+  onCancel,
+  existingRecipes = [],
+  availableIngredients = [], // Add this prop to pass available ingredients
+}) => {
+  const { formData, setFormData, errors, validateName, resetForm } =
+    useRecipeForm(
+      {
+        ingredients: [], // Initialize ingredients as empty array
+      },
+      existingRecipes
+    );
 
   const handleSubmit = async (data) => {
-    // Required field check (optional if handled in <Form>)
+    // Required field check
     if (
       !data.name ||
       !data.cookTime ||
       !data.servings ||
       !data.ingredients ||
+      data.ingredients.length === 0 ||
       !data.instructions
     ) {
-      alert("Please fill in all required fields");
+      alert(
+        "Please fill in all required fields and add at least one ingredient"
+      );
       return;
     }
 
@@ -31,22 +40,24 @@ const RecipeForm = ({ onSubmit, onCancel, existingRecipes = [] }) => {
     }
 
     try {
-      const ingredientsArray = data.ingredients
-        .split(',')
-        .map((ingredient) => ingredient.trim())
-        .filter((ingredient) => ingredient.length > 0);
-
       const response = await createRecipe({
         ...data,
-        ingredients: ingredientsArray,
         servings: parseInt(data.servings, 10),
+        // ingredients is already an array of ingredient objects
       });
-      
+
       onSubmit(response.results);
     } catch (error) {
-      console.error('Error creating recipe:', error);
-      alert('Failed to create recipe');
+      console.error("Error creating recipe:", error);
+      alert("Failed to create recipe");
     }
+  };
+
+  const handleIngredientsChange = (ingredients) => {
+    setFormData((prev) => ({
+      ...prev,
+      ingredients,
+    }));
   };
 
   return (
@@ -64,7 +75,14 @@ const RecipeForm = ({ onSubmit, onCancel, existingRecipes = [] }) => {
       }}
       submitText="Create Recipe"
       cancelText="Cancel"
-    />
+    >
+      <IngredientManager
+        ingredients={formData.ingredients || []}
+        onChange={handleIngredientsChange}
+        availableIngredients={availableIngredients}
+        errors={errors}
+      />
+    </Form>
   );
 };
 

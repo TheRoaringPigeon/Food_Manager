@@ -19,7 +19,7 @@ function Recipes() {
   const fetchAllRecipes = async () => {
     try {
       const response = await getAllRecipes();
-      setRecipes(response.results.recipes);
+      setRecipes(response.results);
     } catch (err) {
       console.error("Failed to fetch recipe(s): ", err);
       setRecipes(dummyRecipes);
