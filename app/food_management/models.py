@@ -25,10 +25,6 @@ class Ingredient(models.Model):
     name = models.CharField(max_length=255, unique=True)
     unit = models.CharField(max_length=50, choices=UNIT_CHOICES)
     category = models.CharField(max_length=100, choices=CATEGORY_CHOICES, blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    expiration_date = models.DateTimeField(
-        default=lambda: timezone.now() + timedelta(days=7)
-    )
     
     class Meta:
         db_table = 'ingredients'
