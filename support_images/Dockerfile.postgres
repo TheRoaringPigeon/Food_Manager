@@ -1,1 +1,0 @@
-FROM food_manager_postgres:dev
