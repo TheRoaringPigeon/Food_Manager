@@ -4,7 +4,7 @@ from .models import Ingredient, Recipe, RecipeIngredient, IngredientInventory, P
 
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
-    list_display = ['name', 'unit', 'category', 'created_at']
+    list_display = ['name', 'unit', 'category']
     list_filter = ['category', 'unit']
     search_fields = ['name']
     ordering = ['name']
