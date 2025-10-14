@@ -6,6 +6,7 @@ from datetime import timedelta
 class Ingredient(models.Model):
     UNIT_CHOICES = [
         ('grams', 'Grams'),
+        ('lbs', 'Pounds'),
         ('ml', 'Milliliters'),
         ('pieces', 'Pieces'),
         ('cups', 'Cups'),
