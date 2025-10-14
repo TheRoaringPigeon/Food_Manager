@@ -22,6 +22,7 @@
 4. **Create superuser (optional):**
    ```bash
    python manage.py createsuperuser
+   # or `python manage.py loaddata superuser.json`
    ```
 
 5. **Run the server:**
