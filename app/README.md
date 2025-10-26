@@ -24,7 +24,12 @@
    python manage.py createsuperuser
    ```
 
-5. **Run the server:**
+5. **Seed database (optional and creates a superuser):**
+   ```bash
+   python manage.py seed_db
+   ```
+
+6. **Run the server:**
    ```bash
    python manage.py runserver
    ```
