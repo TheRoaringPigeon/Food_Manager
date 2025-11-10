@@ -32,61 +32,31 @@ services:
       - ./configs/pgadmin/pgpass:/pgadmin4/pgpass
       - ./configs/pgadmin/servers.json:/pgadmin4/servers.json
 
-  # ollama:
-  #   image: ollama/ollama
-  #   container_name: ollama
-  #   ports:
-  #     - "11434:11434"
-  #   networks:
-  #     - fm-net
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - capabilities: [gpu]
-  #   runtime: nvidia
-  #   environment:
-  #     - NVIDIA_VISIBLE_DEVICES=all
-  #   volumes:
-  #     - ollama-models:/root/.ollama
-  #     - ./configs/ollama/entry.sh:/entry.sh:ro
-  #   entrypoint: ["/bin/sh", "/entry.sh"]
-  #   env_file:
-  #     - .env
-
-  # backend:
-  #   build:
-  #     context: ../
-  #     dockerfile: deployment/Dockerfile.backend
-  #   container_name: backend
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_started
-  #     ollama:
-  #       condition: service_started
-  #   networks:
-  #     - fm-net
-  #   env_file:
-  #     - .env
-
-  # chromadb:
-  #   image: chromadb/chroma:1.0.18.dev24
-  #   container_name: chromadb
-  #   ports:
-  #     - "8000:8000"
-  #   networks:
-  #     - fm-net
-  #   environment:
-  #     - IS_PERSISTENT=TRUE
-  #   volumes:
-  #     - chromadb_data:/data/
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - fm-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ollama-models:/root/.ollama
+      - ./configs/ollama/entry.sh:/entry.sh:ro
+    entrypoint: ["/bin/sh", "/entry.sh"]
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
   ollama-models:
-  chromadb_data:
 
 networks:
   fm-net:
