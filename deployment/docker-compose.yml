@@ -34,7 +34,7 @@ services:
 
   ollama:
     image: ollama/ollama
-    container_name: ollama
+    container_name: fm-llm
     ports:
       - "11434:11434"
     networks:
