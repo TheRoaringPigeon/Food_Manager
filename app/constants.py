@@ -13,14 +13,14 @@ LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
 UVICORN_WORKERS = int(os.getenv('UVICORN_WORKERS', 1))
 
 API_INFO = {
-  "title": "Food Manager API",
-  "description": (
-    "This API serves as the central logic hub for the food manager application. "
-    "Calls from the frontend for database data and LLM responses are handled here. "
-  ),
-  "version": "0.0.1",
-  "port": 5001,
-  "host": "0.0.0.0"
+    "title": "Food Manager API",
+    "description": (
+        "This API serves as the central logic hub for the food manager application. "
+        "Calls from the frontend for database data and LLM responses are handled here. "
+    ),
+    "version": "0.0.1",
+    "port": 5001,
+    "host": "0.0.0.0"
 }
 
 API_CONTEXT_PATH = os.getenv('API_CONTEXT_PATH', '/food-manager/api')
