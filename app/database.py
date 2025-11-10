@@ -14,15 +14,18 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+  db = SessionLocal()
+  try:
+    yield db
+  finally:
+    db.close()
+
 
 def init_db():
-    from models.recipe import Base
-    logger.info("Creating database tables...")
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created successfully")
+  # TODO: keeping for now, but is likely not needed with alembic.
+  from models.recipe import Base
+  logger.info("Creating database tables...")
+  Base.metadata.create_all(bind=engine)
+  logger.info("Database tables created successfully")
