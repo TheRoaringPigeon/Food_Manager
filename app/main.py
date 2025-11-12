@@ -10,6 +10,9 @@ from routers import (
   recipe_router
 )
 
+import gradio as gr
+from gradio_app import demo
+
 logger = get_logger(__name__)
 
 
@@ -55,6 +58,8 @@ async def info():
 @app.get(f"{API_CONTEXT_PATH}/health")
 async def read_root():
   return f"{API_INFO['title']} is Healthy"
+
+app = gr.mount_gradio_app(app, demo, path="/food-manager-app")
 
 if __name__ == "__main__":
   uvicorn.run(
