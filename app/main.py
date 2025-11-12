@@ -5,7 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from constants import API_INFO, UVICORN_WORKERS, APP_ENVIRONMENT, TAG_METADATA, API_CONTEXT_PATH
 from utils.logger import get_logger
-from routers.recipe_router import router as recipe_router
+from routers import (
+  ingredient_router,
+  recipe_router
+)
 
 logger = get_logger(__name__)
 
@@ -27,6 +30,7 @@ app = FastAPI(
 )
 
 app.include_router(recipe_router)
+app.include_router(ingredient_router)
 
 origins = ["*"]
 

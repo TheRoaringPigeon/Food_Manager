@@ -10,7 +10,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from main import app
 from database import get_db
-from models.recipe import Base
+from models import Base
+from models.ingredient import Ingredient
+from models.recipe import Recipe
 
 # Use in-memory SQLite for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -64,4 +66,18 @@ def sample_recipe_data():
       "servings": 4,
       "recipe_type": "breakfast",
       "tags": "quick,easy,breakfast"
+  }
+
+@pytest.fixture
+def sample_ingredient_data():
+  """Sample ingredient data for testing"""
+  return{
+    "name": "ground beef",
+    "description": "low grade meat that always seems to go bad instantly",
+    "ingredient_type": "meat",
+    "quantity": 1,
+    "unit": "pound",
+    "tags": "",
+    "image_url": "",
+    "is_available": True,
   }
