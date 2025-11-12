@@ -1,9 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Enum
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 import enum
-
-Base = declarative_base()
+from models import Base
 
 
 class RecipeTypeEnum(str, enum.Enum):

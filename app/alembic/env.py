@@ -1,4 +1,6 @@
-from models.recipe import Base
+from models import Base
+from models.ingredient import Ingredient
+from models.recipe import Recipe
 from constants import DATABASE_URL
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config
