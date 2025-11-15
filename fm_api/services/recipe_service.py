@@ -1,5 +1,5 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, desc
 from models.recipe import Recipe, RecipeTypeEnum
 from schemas.recipe import RecipeCreate, RecipeUpdate
 from typing import List, Optional
@@ -9,22 +9,23 @@ from datetime import datetime
 class RecipeService:
 
   @staticmethod
-  def create_recipe(db: Session, recipe: RecipeCreate) -> Recipe:
+  async def create_recipe(db: AsyncSession, recipe: RecipeCreate) -> Recipe:
     """Create a new recipe"""
     db_recipe = Recipe(**recipe.model_dump())
     db.add(db_recipe)
-    db.commit()
-    db.refresh(db_recipe)
+    await db.commit()
+    await db.refresh(db_recipe)
     return db_recipe
 
   @staticmethod
-  def get_recipe(db: Session, recipe_id: int) -> Optional[Recipe]:
+  async def get_recipe(db: AsyncSession, recipe_id: int) -> Optional[Recipe]:
     """Get a recipe by ID"""
-    return db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    result = await db.execute(select(Recipe).filter(Recipe.id == recipe_id))
+    return result.scalar_one_or_none()
 
   @staticmethod
-  def get_recipes(
-      db: Session,
+  async def get_recipes(
+      db: AsyncSession,
       skip: int = 0,
       limit: int = 100,
       recipe_type: Optional[RecipeTypeEnum] = None,
@@ -32,7 +33,7 @@ class RecipeService:
       search: Optional[str] = None
   ) -> List[Recipe]:
     """Get all recipes with optional filtering"""
-    query = db.query(Recipe)
+    query = select(Recipe)
 
     if recipe_type:
       query = query.filter(Recipe.recipe_type == recipe_type)
@@ -48,17 +49,19 @@ class RecipeService:
           (Recipe.tags.ilike(search_term))
       )
 
-    return query.order_by(desc(Recipe.created_at)).offset(skip).limit(limit).all()
+    query = query.order_by(desc(Recipe.created_at)).offset(skip).limit(limit)
+    result = await db.execute(query)
+    return result.scalars().all()
 
   @staticmethod
-  def update_recipe(
-      db: Session,
+  async def update_recipe(
+      db: AsyncSession,
       recipe_id: int,
       recipe_update: RecipeUpdate
   ) -> Optional[Recipe]:
     """Update a recipe"""
-    db_recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
-
+    result = await db.execute(select(Recipe).filter(Recipe.id == recipe_id))
+    db_recipe = result.scalar_one_or_none()
     if not db_recipe:
       return None
 
@@ -66,53 +69,51 @@ class RecipeService:
     for field, value in update_data.items():
       setattr(db_recipe, field, value)
 
-    db.commit()
-    db.refresh(db_recipe)
+    await db.commit()
+    await db.refresh(db_recipe)
     return db_recipe
 
   @staticmethod
-  def delete_recipe(db: Session, recipe_id: int) -> bool:
+  async def delete_recipe(db: AsyncSession, recipe_id: int) -> bool:
     """Delete a recipe"""
-    db_recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
-
+    result = await db.execute(select(Recipe).filter(Recipe.id == recipe_id))
+    db_recipe = result.scalar_one_or_none()
     if not db_recipe:
       return False
 
-    db.delete(db_recipe)
-    db.commit()
+    await db.delete(db_recipe)
+    await db.commit()
     return True
 
   @staticmethod
-  def toggle_favorite(db: Session, recipe_id: int) -> Optional[Recipe]:
+  async def toggle_favorite(db: AsyncSession, recipe_id: int) -> Optional[Recipe]:
     """Toggle favorite status of a recipe"""
-    db_recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
-
+    result = await db.execute(select(Recipe).filter(Recipe.id == recipe_id))
+    db_recipe = result.scalar_one_or_none()
     if not db_recipe:
       return None
 
     db_recipe.is_favorite = not db_recipe.is_favorite
-    db.commit()
-    db.refresh(db_recipe)
+    await db.commit()
+    await db.refresh(db_recipe)
     return db_recipe
 
   @staticmethod
-  def mark_as_cooked(db: Session, recipe_id: int) -> Optional[Recipe]:
+  async def mark_as_cooked(db: AsyncSession, recipe_id: int) -> Optional[Recipe]:
     """Mark a recipe as cooked (update last_cooked timestamp)"""
-    db_recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
-
+    result = await db.execute(select(Recipe).filter(Recipe.id == recipe_id))
+    db_recipe = result.scalar_one_or_none()
     if not db_recipe:
       return None
 
     db_recipe.last_cooked = datetime.utcnow()
-    db.commit()
-    db.refresh(db_recipe)
+    await db.commit()
+    await db.refresh(db_recipe)
     return db_recipe
 
   @staticmethod
-  def get_recently_cooked(db: Session, limit: int = 10) -> List[Recipe]:
+  async def get_recently_cooked(db: AsyncSession, limit: int = 10) -> List[Recipe]:
     """Get recently cooked recipes"""
-    return db.query(Recipe)\
-        .filter(Recipe.last_cooked.isnot(None))\
-        .order_by(desc(Recipe.last_cooked))\
-        .limit(limit)\
-        .all()
+    query = select(Recipe).filter(Recipe.last_cooked.isnot(None)).order_by(desc(Recipe.last_cooked)).limit(limit)
+    result = await db.execute(query)
+    return result.scalars().all()

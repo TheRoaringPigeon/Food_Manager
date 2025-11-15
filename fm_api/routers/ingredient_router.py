@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from database import get_db
 from schemas.ingredient import IngredientCreate, IngredientUpdate, IngredientResponse
@@ -16,10 +16,10 @@ router = APIRouter(
 @router.post("", response_model=IngredientResponse, status_code=201)
 async def create_ingredient(
     ingredient: IngredientCreate,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
   """Create a new ingredient"""
-  return IngredientService.create_ingredient(db, ingredient)
+  return await IngredientService.create_ingredient(db, ingredient)
 
 
 @router.get("", response_model=List[IngredientResponse])
@@ -29,10 +29,10 @@ async def get_ingredients(
     ingredient_type: Optional[IngredientTypeEnum] = None,
     is_available: Optional[bool] = None,
     search: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
   """Get all ingredients with optional filters"""
-  return IngredientService.get_ingredients(
+  return await IngredientService.get_ingredients(
       db,
       skip=skip,
       limit=limit,
@@ -45,32 +45,32 @@ async def get_ingredients(
 @router.get("/{ingredient_id}", response_model=IngredientResponse)
 async def get_ingredient(
     ingredient_id: int,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
   """Get a specific ingredient by ID"""
   ingredient = IngredientService.get_ingredient(db, ingredient_id)
   if not ingredient:
     raise HTTPException(status_code=404, detail="Ingredient not found")
-  return ingredient
+  return await ingredient
 
 
 @router.put("/{ingredient_id}", response_model=IngredientResponse)
 async def update_ingredient(
     ingredient_id: int,
     ingredient_update: IngredientUpdate,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
   """Update an ingredient"""
   ingredient = IngredientService.update_ingredient(db, ingredient_id, ingredient_update)
   if not ingredient:
     raise HTTPException(status_code=404, detail="Ingredient not found")
-  return ingredient
+  return await ingredient
 
 
 @router.delete("/{ingredient_id}", status_code=204)
 async def delete_ingredient(
     ingredient_id: int,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
   """Delete an ingredient"""
   success = IngredientService.delete_ingredient(db, ingredient_id)
@@ -81,10 +81,10 @@ async def delete_ingredient(
 @router.post("/{ingredient_id}/availability", response_model=IngredientResponse)
 async def toggle_availability(
     ingredient_id: int,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
   """Toggle availability status of an ingredient"""
   ingredient = IngredientService.toggle_availability(db, ingredient_id)
   if not ingredient:
     raise HTTPException(status_code=404, detail="Ingredient not found")
-  return ingredient
+  return await ingredient
