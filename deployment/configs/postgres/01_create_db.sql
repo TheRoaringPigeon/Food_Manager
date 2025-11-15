@@ -1,1 +1,2 @@
 CREATE DATABASE fm_db;
+CREATE DATABASE llm_api;

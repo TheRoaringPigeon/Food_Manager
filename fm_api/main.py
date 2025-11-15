@@ -6,8 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from constants import API_INFO, UVICORN_WORKERS, APP_ENVIRONMENT, TAG_METADATA, API_CONTEXT_PATH
 from utils.logger import get_logger
 from routers import (
-  ingredient_router,
-  recipe_router
+    ingredient_router,
+    recipe_router
 )
 
 import gradio as gr
@@ -59,7 +59,9 @@ async def info():
 async def read_root():
   return f"{API_INFO['title']} is Healthy"
 
-app = gr.mount_gradio_app(app, demo, path="/food-manager-app")
+if APP_ENVIRONMENT == "development":
+  app = gr.mount_gradio_app(app, demo, path="/food-manager-app")
+
 
 if __name__ == "__main__":
   uvicorn.run(

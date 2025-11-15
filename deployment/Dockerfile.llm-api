@@ -1,0 +1,16 @@
+FROM python:3.12.0
+
+WORKDIR /app
+
+COPY requirements-crawl.txt ./
+RUN pip install -r requirements-crawl.txt && playwright install
+
+COPY requirements.txt ./
+
+RUN pip install -r requirements.txt
+
+COPY *.py ./
+COPY log_config.ini ./
+COPY ./models ./models
+
+CMD ["/bin/sh", "-c", "python /app/main.py"]
