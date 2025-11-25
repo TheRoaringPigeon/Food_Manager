@@ -9,7 +9,7 @@ LOG_PATH: Path = ROOT_PATH / "log_config.ini"
 
 APP_ENVIRONMENT = os.getenv('APP_ENVIRONMENT', 'development')
 
-LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 UVICORN_WORKERS = int(os.getenv('UVICORN_WORKERS', 1))
 
 API_INFO = {
@@ -49,3 +49,4 @@ CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "dolphin-mistral:7b")
+FM_API = os.getenv("FM_API", "http://localhost:5001")

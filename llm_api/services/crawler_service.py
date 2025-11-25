@@ -6,26 +6,27 @@ import asyncio
 import os
 import re
 import json
-import requests
 from xml.etree import ElementTree
 from bs4 import BeautifulSoup
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
-
+import aiohttp
+import html
 from database import AsyncSessionLocal
 from sqlalchemy import select
 from models.Crawler import CrawlLock
 from utils.logger import get_logger
-
 from utils.time import iso8601_to_text
+from integrations.chromadb import get_collection
+from integrations.fm_api import FMApiClientAsync
 
+fm_api_client = FMApiClientAsync()
 logger = get_logger(__name__)
 
 # === SETTINGS ===
 SITEMAP_URL = "https://www.simplyrecipes.com/sitemap_1.xml"
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-MAX_THREADS = 100
+MAX_CONCURRENT = 100
 
 
 class CrawlerService:
@@ -80,16 +81,46 @@ class CrawlerService:
     )
 
   # === UTILITY FUNCTIONS ===
-  def get_recipe_urls_from_sitemap(self, sitemap_url: str) -> List[str]:
+  def build_document(self, recipe):
+    return (
+        f"{recipe['name']}\n\n"
+        f"Ingredients:\n" + "\n".join(recipe['recipeIngredient']) + "\n\n"
+        f"Instructions:\n" + "\n".join(recipe['recipeInstructions'])
+    )
+
+  def build_metadata(self, recipe):
+    return {
+        "name": recipe["name"],
+        "category": ", ".join(recipe.get("recipeCategory", [])),
+        "cuisine": ", ".join(recipe.get("recipeCuisine", [])),
+        "keywords": recipe.get("keywords"),
+        "prepTime": recipe.get("prepTime"),
+        "cookTime": recipe.get("cookTime"),
+        "numIngredients": len(recipe.get("recipeIngredient", [])),
+    }
+
+  def html_unescape_recursive(self, obj):
+    if isinstance(obj, dict):
+      return {k: self.html_unescape_recursive(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+      return [self.html_unescape_recursive(i) for i in obj]
+    elif isinstance(obj, str):
+      return html.unescape(obj)
+    else:
+      return obj
+
+  async def get_recipe_urls_from_sitemap(self, sitemap_url: str) -> List[str]:
     """Fetch URLs from the sitemap that are under /recipes/."""
     try:
-      response = requests.get(sitemap_url, timeout=10)
-      response.raise_for_status()
+      async with aiohttp.ClientSession() as session:
+        async with session.get(sitemap_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+          response.raise_for_status()
+          content = await response.read()
 
-      root = ElementTree.fromstring(response.content)
+      root = ElementTree.fromstring(content)
       namespace = {"ns": "http://www.sitemaps.org/schemas/sitemap/0.9"}
       all_urls = [loc.text for loc in root.findall(".//ns:loc", namespace)]
-      recipe_urls = [u for u in all_urls if "/recipes/" in u]
+      recipe_urls = [u for u in all_urls if "/recipes/" in u][:50]
       logger.info(f"Found {len(recipe_urls)} recipe URLs (out of {len(all_urls)} total).")
       return recipe_urls
     except Exception as e:
@@ -128,15 +159,30 @@ class CrawlerService:
       logger.warning(f"Failed to parse JSON-LD for {url}: {e}")
       return {"url": url, "error": str(e)}
 
-  def fetch_and_parse(self, url: str) -> dict:
+  async def fetch_and_parse(self, session: aiohttp.ClientSession, url: str) -> dict:
     """Fetch a single recipe and parse it."""
     try:
-      response = requests.get(url, timeout=10)
-      response.raise_for_status()
-      return self.parse_recipe(response.text, url)
+      async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+        response.raise_for_status()
+        html = await response.text()
+        return self.parse_recipe(html, url)
     except Exception as e:
       logger.error(f"Error fetching {url}: {e}")
       return {"url": url, "error": str(e)}
+
+  async def save_recipe(self, result: dict):
+    collection = get_collection()
+    recipe_data = self.html_unescape_recursive(result)
+
+    text = self.build_document(recipe_data)
+    metadata = self.build_metadata(recipe_data)
+
+    response = await fm_api_client.create_recipe(recipe_data)
+    collection.add(
+        ids=[str(response.get("id"))],
+        documents=[text],
+        metadatas=[metadata],
+    )
 
   async def acquire_lock(self) -> bool:
     """Try to acquire the crawl lock. Returns True if successful."""
@@ -175,14 +221,28 @@ class CrawlerService:
       lock = result.scalar_one_or_none()
       return lock.is_locked if lock else False
 
+  async def process_url(self, session: aiohttp.ClientSession, url: str, semaphore: asyncio.Semaphore):
+    """Process a single URL with concurrency control."""
+    async with semaphore:
+      result = await self.fetch_and_parse(session, url)
+
+      # Update counters
+      self.app.state.crawler.processed_urls += 1
+      if "error" in result:
+        self.app.state.crawler.fail_count += 1
+      else:
+        self.app.state.crawler.success_count += 1
+
+      # Save the recipe
+      await self.save_recipe(result)
+
+      return result
+
   async def run_crawler(self):
     """Main function to run crawler in background."""
     try:
       # Get recipe URLs from sitemap
-      recipe_urls = await asyncio.to_thread(
-          self.get_recipe_urls_from_sitemap,
-          SITEMAP_URL
-      )
+      recipe_urls = await self.get_recipe_urls_from_sitemap(SITEMAP_URL)
 
       if not recipe_urls:
         logger.warning("No recipe URLs found.")
@@ -195,8 +255,25 @@ class CrawlerService:
       self.app.state.crawler.total_urls = len(recipe_urls)
       logger.info(f"Starting crawl of {len(recipe_urls)} recipes...")
 
-      # Run the entire crawling process in a thread pool to avoid blocking
-      await asyncio.to_thread(self._crawl_sync, recipe_urls)
+      # Create semaphore to limit concurrent requests
+      semaphore = asyncio.Semaphore(MAX_CONCURRENT)
+
+      # Create aiohttp session for all requests
+      async with aiohttp.ClientSession() as session:
+        # Create tasks for all URLs
+        tasks = [
+            self.process_url(session, url, semaphore)
+            for url in recipe_urls
+        ]
+
+        # Process all tasks concurrently
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Handle any exceptions
+        for i, result in enumerate(results):
+          if isinstance(result, Exception):
+            logger.error(f"Exception processing {recipe_urls[i]}: {result}")
+            self.app.state.crawler.fail_count += 1
 
       # Mark as completed
       self.app.state.crawler.status = CrawlStatus.COMPLETED
@@ -212,49 +289,3 @@ class CrawlerService:
     finally:
       # Always release the lock
       await self.release_lock()
-
-  def _crawl_sync(self, recipe_urls: List[str]):
-    """Synchronous crawling logic that runs in a separate thread"""
-    results = []
-
-    # Use ThreadPoolExecutor for parallel fetching
-    def process_url(url):
-      result = self.fetch_and_parse(url)
-
-      # Update counters (thread-safe for simple int operations)
-      self.app.state.crawler.processed_urls += 1
-      if "error" in result:
-        self.app.state.crawler.fail_count += 1
-      else:
-        self.app.state.crawler.success_count += 1
-
-      # Save immediately
-      safe_name = result.get("name") or result["url"].strip("/").split("/")[-1]
-      safe_name = re.sub(r"[^\w\-]", "_", safe_name) + ".json"
-      output_path = os.path.join(OUTPUT_DIR, safe_name)
-
-      try:
-        with open(output_path, "w", encoding="utf-8") as f:
-          json.dump(result, f, ensure_ascii=False, indent=2)
-        logger.info(f"Saved: {safe_name}")
-      except Exception as e:
-        logger.error(f"Failed to save {safe_name}: {e}")
-
-      return result
-
-    with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
-      future_to_url = {
-          executor.submit(process_url, url): url
-          for url in recipe_urls
-      }
-
-      for future in as_completed(future_to_url):
-        try:
-          result = future.result()
-          results.append(result)
-        except Exception as e:
-          url = future_to_url[future]
-          logger.error(f"Exception processing {url}: {e}")
-          self.app.state.crawler.fail_count += 1
-
-    return results

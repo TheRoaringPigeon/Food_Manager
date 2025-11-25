@@ -12,6 +12,7 @@ class RecipeTypeEnum(str, enum.Enum):
   SNACK = "snack"
   DESSERT = "dessert"
   DRINK = "drink"
+  OTHER = "other"
 
 
 class Recipe(Base):
