@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from models.recipe import RecipeTypeEnum
 
@@ -7,8 +7,8 @@ from models.recipe import RecipeTypeEnum
 class RecipeBase(BaseModel):
   name: str = Field(..., min_length=1, max_length=255)
   description: Optional[str] = None
-  ingredients: str = Field(..., min_length=1)
-  instructions: str = Field(..., min_length=1)
+  ingredients: List[str]
+  instructions: List[str]
   prep_time: Optional[int] = Field(None, ge=0)
   cook_time: Optional[int] = Field(None, ge=0)
   servings: Optional[int] = Field(None, ge=1)

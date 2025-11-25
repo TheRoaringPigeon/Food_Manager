@@ -1,21 +1,21 @@
 services:
-  llm_api:
-    build: 
-      dockerfile: ../deployment/Dockerfile.llm-api
-      context: ../llm_api
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./output:/app/output
-    environment:
-      - PYTHONUNBUFFERED=1
-      - DB_NAME=llm_api
-    env_file:
-      - .env
-    restart: unless-stopped
-    shm_size: '2gb'  # Important for Chromium
-    networks:
-      - fm-net
+  # llm_api:
+  #   build: 
+  #     dockerfile: ../deployment/Dockerfile.llm-api
+  #     context: ../llm_api
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./output:/app/output
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #     - DB_NAME=llm_api
+  #   env_file:
+  #     - .env
+  #   restart: unless-stopped
+  #   shm_size: '2gb'  # Important for Chromium
+  #   networks:
+  #     - fm-net
 
   postgres:
     image: postgres:16
@@ -72,9 +72,22 @@ services:
     env_file:
       - .env
 
+  chromadb:
+    image: chromadb/chroma:1.0.18.dev24
+    container_name: chroma_db
+    ports:
+      - "8000:8000"
+    networks:
+      - fm-net
+    environment:
+      - IS_PERSISTENT=TRUE
+    volumes:
+      - chromadb_data:/data/
+
 volumes:
   postgres_data:
   ollama-models:
+  chromadb_data:
 
 networks:
   fm-net:

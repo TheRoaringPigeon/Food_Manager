@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Enum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 import enum
 from models import Base
@@ -19,8 +20,8 @@ class Recipe(Base):
   id = Column(Integer, primary_key=True, index=True)
   name = Column(String(255), nullable=False, index=True)
   description = Column(Text, nullable=True)
-  ingredients = Column(Text, nullable=False)
-  instructions = Column(Text, nullable=False)
+  ingredients = Column(JSONB, nullable=False)
+  instructions = Column(JSONB, nullable=False)
   prep_time = Column(Integer, nullable=True)
   cook_time = Column(Integer, nullable=True)
   servings = Column(Integer, nullable=True)
