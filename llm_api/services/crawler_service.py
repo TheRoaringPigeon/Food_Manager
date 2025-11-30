@@ -16,10 +16,16 @@ from sqlalchemy import select
 from models.Crawler import CrawlLock
 from utils.logger import get_logger
 from utils.time import iso8601_to_text
-from integrations.chromadb import get_collection
+from integrations.chromadb import ChromaRepository
 from integrations.fm_api import FMApiClientAsync
+from routers.recipe import get_recipes, create_recipe
+from models.Recipe import Recipe
+from schemas.Recipe import RecipeCreate
+from database import AsyncSessionLocal
+from services.recipe_service import RecipeService
 
 fm_api_client = FMApiClientAsync()
+chroma = ChromaRepository()
 logger = get_logger(__name__)
 
 # === SETTINGS ===
@@ -80,7 +86,6 @@ class CrawlerService:
         is_locked=is_locked
     )
 
-  # === UTILITY FUNCTIONS ===
   def build_document(self, recipe):
     return (
         f"{recipe['name']}\n\n"
@@ -171,18 +176,22 @@ class CrawlerService:
       return {"url": url, "error": str(e)}
 
   async def save_recipe(self, result: dict):
-    collection = get_collection()
     recipe_data = self.html_unescape_recursive(result)
 
     text = self.build_document(recipe_data)
     metadata = self.build_metadata(recipe_data)
 
     response = await fm_api_client.create_recipe(recipe_data)
-    collection.add(
+
+    chroma.add(
         ids=[str(response.get("id"))],
         documents=[text],
         metadatas=[metadata],
     )
+
+    async with AsyncSessionLocal() as db:
+      save_url_response = await RecipeService.create_recipe(db=db, recipe=RecipeCreate(url=result.get("url")))
+      print(f"save_url_response = {save_url_response}")
 
   async def acquire_lock(self) -> bool:
     """Try to acquire the crawl lock. Returns True if successful."""
@@ -238,16 +247,50 @@ class CrawlerService:
 
       return result
 
+  async def check_recipe_urls_against_db(self, urls: List[str]) -> List[str]:
+
+    def normalize(url: str) -> str:
+      from urllib.parse import urlparse, urlunparse
+      parsed = urlparse(url.strip())
+      return urlunparse((
+          parsed.scheme.lower(),
+          parsed.netloc.lower(),
+          parsed.path.rstrip('/'),
+          parsed.params,
+          parsed.query,
+          ''
+      ))
+    saved_urls: List[str] = []
+    skip = 0
+    limit = 500
+    async with AsyncSessionLocal() as db:
+      while True:
+        batch = await RecipeService.get_recipes(db=db, skip=skip, limit=limit)
+        if not batch:
+          break
+        batch_urls = [recipe.url for recipe in batch]
+        saved_urls.extend(batch_urls)
+        if len(batch) < limit:
+          break
+        skip += limit
+    saved_url_set = {normalize(u) for u in saved_urls}
+    input_urls_norm = {normalize(u): u for u in urls}
+    return [orig for norm, orig in input_urls_norm.items() if norm not in saved_url_set]
+
   async def run_crawler(self):
     """Main function to run crawler in background."""
     try:
-      # Get recipe URLs from sitemap
-      recipe_urls = await self.get_recipe_urls_from_sitemap(SITEMAP_URL)
-
-      if not recipe_urls:
-        logger.warning("No recipe URLs found.")
-        self.app.state.crawler.status = CrawlStatus.FAILED
-        self.app.state.crawler.error_message = "No recipe URLs found"
+      all_recipe_urls = await self.get_recipe_urls_from_sitemap(SITEMAP_URL)
+      recipe_urls = await self.check_recipe_urls_against_db(all_recipe_urls)
+        
+      if not all_recipe_urls or not recipe_urls:
+        if not all_recipe_urls:
+          msg = f"No URLs found from sitemap [{SITEMAP_URL}]"
+        else:
+          msg = f"No new URLs found from sitemap [{SITEMAP_URL}]"
+        logger.warning(msg)
+        self.app.state.crawler.status = CrawlStatus.IDLE
+        self.app.state.crawler.error_message = msg
         self.app.state.crawler.end_time = datetime.now()
         await self.release_lock()
         return

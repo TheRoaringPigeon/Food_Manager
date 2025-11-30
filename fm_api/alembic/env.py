@@ -1,5 +1,4 @@
 from constants import DATABASE_URL
-from models.crawl_lock import CrawlLock
 from models.recipe import Recipe
 from models.ingredient import Ingredient
 from models import Base  # your declarative base
