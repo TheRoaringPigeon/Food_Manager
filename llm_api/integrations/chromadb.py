@@ -8,12 +8,90 @@ embedding_fn = OllamaEmbeddingFunction(
     timeout=30
 )
 
-def get_chroma_client():
-    return HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
 
-def get_collection(name: str = "recipes"):
-    client = get_chroma_client()
-    return client.get_or_create_collection(
-        name=name,
+def get_chroma_client():
+  return HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+
+
+class ChromaRepository:
+  def __init__(self, collection_name: str = "recipes"):
+    self.client = get_chroma_client()
+    self.collection = self.client.get_or_create_collection(
+        name=collection_name,
         embedding_function=embedding_fn
     )
+
+  def add(
+      self,
+      ids: list[str],
+      documents: list[str] | None = None,
+      metadatas: list[dict] | None = None
+  ):
+    """Add documents to the collection."""
+    return self.collection.add(
+        ids=ids,
+        documents=documents,
+        metadatas=metadatas
+    )
+
+  def get(self, ids: list[str]):
+    """Retrieve documents by ID."""
+    return self.collection.get(ids=ids)
+
+  def query(
+      self,
+      text: str = None,
+      query_embeddings=None,
+      n_results: int = 5,
+      where: dict | None = None,
+      where_document: dict | None = None,
+  ):
+    """
+    Query the collection using text or embedding.
+    Provide either `text` OR custom `query_embeddings`.
+    """
+    return self.collection.query(
+        query_texts=[text] if text else None,
+        query_embeddings=query_embeddings,
+        n_results=n_results,
+        where=where,
+        where_document=where_document
+    )
+
+  def update(
+      self,
+      ids: list[str],
+      documents: list[str] | None = None,
+      metadatas: list[dict] | None = None,
+  ):
+    """Update documents or metadata for given IDs."""
+    return self.collection.update(
+        ids=ids,
+        documents=documents,
+        metadatas=metadatas
+    )
+
+  def delete(
+      self,
+      ids: list[str] | None = None,
+      where: dict | None = None,
+      where_document: dict | None = None,
+  ):
+    """Delete documents by ID or filter."""
+    return self.collection.delete(
+        ids=ids,
+        where=where,
+        where_document=where_document
+    )
+
+  def count(self):
+    """Return the number of items in the collection."""
+    return self.collection.count()
+
+  def peek(self, n: int = 10):
+    """Preview a few items."""
+    return self.collection.peek(n)
+
+  def all(self):
+    """Return all documents in the collection."""
+    return self.collection.get()
