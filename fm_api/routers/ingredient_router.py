@@ -48,10 +48,10 @@ async def get_ingredient(
     db: AsyncSession = Depends(get_db)
 ):
   """Get a specific ingredient by ID"""
-  ingredient = IngredientService.get_ingredient(db, ingredient_id)
+  ingredient = await IngredientService.get_ingredient(db, ingredient_id)
   if not ingredient:
     raise HTTPException(status_code=404, detail="Ingredient not found")
-  return await ingredient
+  return ingredient
 
 
 @router.put("/{ingredient_id}", response_model=IngredientResponse)
@@ -61,10 +61,10 @@ async def update_ingredient(
     db: AsyncSession = Depends(get_db)
 ):
   """Update an ingredient"""
-  ingredient = IngredientService.update_ingredient(db, ingredient_id, ingredient_update)
+  ingredient = await IngredientService.update_ingredient(db, ingredient_id, ingredient_update)
   if not ingredient:
     raise HTTPException(status_code=404, detail="Ingredient not found")
-  return await ingredient
+  return ingredient
 
 
 @router.delete("/{ingredient_id}", status_code=204)
@@ -73,7 +73,7 @@ async def delete_ingredient(
     db: AsyncSession = Depends(get_db)
 ):
   """Delete an ingredient"""
-  success = IngredientService.delete_ingredient(db, ingredient_id)
+  success = await IngredientService.delete_ingredient(db, ingredient_id)
   if not success:
     raise HTTPException(status_code=404, detail="Ingredient not found")
 
@@ -84,7 +84,7 @@ async def toggle_availability(
     db: AsyncSession = Depends(get_db)
 ):
   """Toggle availability status of an ingredient"""
-  ingredient = IngredientService.toggle_availability(db, ingredient_id)
+  ingredient = await IngredientService.toggle_availability(db, ingredient_id)
   if not ingredient:
     raise HTTPException(status_code=404, detail="Ingredient not found")
-  return await ingredient
+  return ingredient
