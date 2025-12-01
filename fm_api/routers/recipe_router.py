@@ -57,10 +57,10 @@ async def get_recipe(
     db: AsyncSession = Depends(get_db)
 ):
   """Get a specific recipe by ID"""
-  recipe = RecipeService.get_recipe(db, recipe_id)
+  recipe = await RecipeService.get_recipe(db, recipe_id)
   if not recipe:
     raise HTTPException(status_code=404, detail="Recipe not found")
-  return await recipe
+  return recipe
 
 
 @router.put("/{recipe_id}", response_model=RecipeResponse)
@@ -70,10 +70,10 @@ async def update_recipe(
     db: AsyncSession = Depends(get_db)
 ):
   """Update a recipe"""
-  recipe = RecipeService.update_recipe(db, recipe_id, recipe_update)
+  recipe = await RecipeService.update_recipe(db, recipe_id, recipe_update)
   if not recipe:
     raise HTTPException(status_code=404, detail="Recipe not found")
-  return await recipe
+  return recipe
 
 
 @router.delete("/{recipe_id}", status_code=204)
@@ -82,7 +82,7 @@ async def delete_recipe(
     db: AsyncSession = Depends(get_db)
 ):
   """Delete a recipe"""
-  success = RecipeService.delete_recipe(db, recipe_id)
+  success = await RecipeService.delete_recipe(db, recipe_id)
   if not success:
     raise HTTPException(status_code=404, detail="Recipe not found")
 
@@ -93,10 +93,10 @@ async def toggle_favorite(
     db: AsyncSession = Depends(get_db)
 ):
   """Toggle favorite status of a recipe"""
-  recipe = RecipeService.toggle_favorite(db, recipe_id)
+  recipe = await RecipeService.toggle_favorite(db, recipe_id)
   if not recipe:
     raise HTTPException(status_code=404, detail="Recipe not found")
-  return await recipe
+  return recipe
 
 
 @router.post("/{recipe_id}/cooked", response_model=RecipeResponse)
@@ -105,7 +105,7 @@ async def mark_as_cooked(
     db: AsyncSession = Depends(get_db)
 ):
   """Mark a recipe as cooked (updates last_cooked timestamp)"""
-  recipe = RecipeService.mark_as_cooked(db, recipe_id)
+  recipe = await RecipeService.mark_as_cooked(db, recipe_id)
   if not recipe:
     raise HTTPException(status_code=404, detail="Recipe not found")
-  return await recipe
+  return recipe

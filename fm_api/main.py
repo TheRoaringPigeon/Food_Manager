@@ -1,3 +1,16 @@
+import logging
+import os
+
+# Disable Gradio analytics threads
+os.environ["GRADIO_ANALYTICS_ENABLED"] = "false"
+
+# Force-disable noisy httpx/httpcore debug logs
+for name in ["httpcore", "httpx"]:
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.CRITICAL)
+    logger.propagate = False
+    logger.handlers = []
+
 import uvicorn
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
@@ -51,13 +64,13 @@ async def info():
   return {
       "Name": API_INFO['title'],
       "Description": API_INFO['description'],
-      "Version": API_INFO['version']
+      "Version": API_INFO['version'],
   }
 
 
 @app.get(f"{API_CONTEXT_PATH}/health")
 async def read_root():
-  return f"{API_INFO['title']} is Healthy"
+  return f"{API_INFO['title']} is Healthy and running in '{APP_ENVIRONMENT}' mode."
 
 if APP_ENVIRONMENT == "development":
   app = gr.mount_gradio_app(app, demo, path="/food-manager-app")
