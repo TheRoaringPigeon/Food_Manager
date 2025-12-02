@@ -1,6 +1,8 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from constants import DATABASE_URL
 from utils.logger import get_logger
+from sqlalchemy.ext.declarative import declarative_base
+Base = declarative_base()
 
 logger = get_logger(__name__)
 

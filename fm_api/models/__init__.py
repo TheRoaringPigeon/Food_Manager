@@ -1,2 +1,2 @@
-from sqlalchemy.ext.declarative import declarative_base
-Base = declarative_base()
+from .ingredient import Ingredient
+from .recipe import Recipe

@@ -31,7 +31,7 @@ DB_PORT = os.getenv('DB_PORT', '5432')
 
 DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-DB_MAX_RETRIES = 20
+DB_MAX_RETRIES = 5
 DB_RETRY_DELAY = 3
 
 TAG_METADATA = [
