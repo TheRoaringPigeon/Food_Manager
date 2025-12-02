@@ -23,9 +23,7 @@ async def lifespan(app: FastAPI):
   for attempt in range(1, DB_MAX_RETRIES + 1):
     try:
       async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-      logger.info("Database connected and tables created.")
-      break
+        logger.info("Database connected.")
 
     except Exception as e:
       logger.warning(f"Database connection failed (attempt {attempt}/{DB_MAX_RETRIES}): {e}")

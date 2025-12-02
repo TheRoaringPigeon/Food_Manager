@@ -54,13 +54,15 @@ class RecipePersistence:
     Returns:
         Metadata dictionary for vector storage
     """
+    prepTime = recipe.get("prepTime")
+    cookTime = recipe.get("cookTime")
     return {
         "name": recipe["name"],
         "category": ", ".join(recipe.get("recipeCategory", [])),
         "cuisine": ", ".join(recipe.get("recipeCuisine", [])),
         "keywords": recipe.get("keywords"),
-        "prepTime": recipe.get("prepTime"),
-        "cookTime": recipe.get("cookTime"),
+        "prepTime": prepTime if prepTime else "0 minutes",
+        "cookTime": cookTime if cookTime else "0 minutes",
         "numIngredients": len(recipe.get("recipeIngredient", [])),
     }
 
@@ -78,11 +80,16 @@ class RecipePersistence:
 
     response = await self.fm_api_client.create_recipe(recipe_data)
 
-    self.chroma.add(
-        ids=[str(response.get("id"))],
-        documents=[text],
-        metadatas=[metadata],
-    )
+    try:
+      self.chroma.add(
+          ids=[str(response.get("id"))],
+          documents=[text],
+          metadatas=[metadata],
+      )
+    except Exception as e:
+      print(f"Here is the metadata: {metadata}")
+      print(f"Here is the problem: {e}")
+      return "broke"
 
     async with AsyncSessionLocal() as db:
       save_url_response = await RecipeService.create_recipe(

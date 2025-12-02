@@ -75,7 +75,6 @@ class FMApiClientAsync:
   async def create_recipe(self, recipe: dict) -> Dict[str, Any]:
     url = f"{self.base_url}/food-manager/api/recipes"
     payload = self.convert_to_recipe(recipe)
-    print(payload["recipe_type"])
     resp = await self.client.post(url, json=payload)
     resp.raise_for_status()
     return resp.json()

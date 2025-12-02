@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Enum
 from sqlalchemy.sql import func
 import enum
-from models import Base
+from database import Base
 from models.types import JSONBCompatible
 
 

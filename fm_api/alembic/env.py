@@ -1,17 +1,19 @@
+import sys
+from pathlib import Path
+
+try:
+  sys.path.append(str(Path(__file__).resolve().parents[1]))
+except:
+  pass
+
 from constants import DATABASE_URL
-from models.recipe import Recipe
-from models.ingredient import Ingredient
-from models import Base  # your declarative base
+from models import *
+from database import Base  # your declarative base
 import asyncio
 from logging.config import fileConfig
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy import pool
 from alembic import context
-import sys
-from pathlib import Path
-
-# Add project root for imports
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 
 # Alembic Config
