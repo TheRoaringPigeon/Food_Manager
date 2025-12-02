@@ -10,6 +10,7 @@ import asyncio
 from models.Crawler import CrawlerState
 from services.crawler_service import CrawlerService
 from routers.crawler_router import router as crawler_router
+from routers.recipe import router as recipe_router
 from fastapi.middleware.cors import CORSMiddleware
 from utils.logger import get_logger
 
@@ -56,6 +57,7 @@ app = FastAPI(
 )
 
 app.include_router(crawler_router)
+app.include_router(recipe_router)
 
 origins = ["*"]
 
@@ -68,7 +70,7 @@ app.add_middleware(
 )
 
 
-@app.get(f"{API_CONTEXT_PATH}/info")
+@app.get(f"{API_CONTEXT_PATH}/info", tags=["health"])
 async def info():
   return {
       "Name": API_INFO['title'],
@@ -77,7 +79,7 @@ async def info():
   }
 
 
-@app.get(f"{API_CONTEXT_PATH}/health")
+@app.get(f"{API_CONTEXT_PATH}/health", tags=["health"])
 async def read_root():
   return f"{API_INFO['title']} is Healthy"
 

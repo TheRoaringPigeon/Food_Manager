@@ -41,7 +41,11 @@ TAG_METADATA = [
     },
     {
         "name": "health",
-        "description": "Health check and API information endpoints"
+        "description": "Health check and API information endpoints."
+    },
+    {
+      "name": "recipes",
+      "description": "crawled recipes stored in vector DB."
     }
 ]
 

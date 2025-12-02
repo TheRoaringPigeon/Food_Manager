@@ -3,9 +3,11 @@ from sqlalchemy import select, desc
 from models.Recipe import Recipe
 from schemas.Recipe import RecipeCreate
 from typing import List, Optional
+from integrations.chromadb import ChromaRepository
 
 
 class RecipeService:
+  repo = ChromaRepository()
 
   @staticmethod
   async def create_recipe(db: AsyncSession, recipe: RecipeCreate) -> Recipe:
@@ -45,3 +47,32 @@ class RecipeService:
     await db.delete(db_recipe)
     await db.commit()
     return True
+
+  @staticmethod
+  async def query_recipes(query: str, n_results: int = 5):
+    """
+    Query ChromaDB for recipes based on text search.
+    """
+    try:
+      results = RecipeService.repo.query(
+          text=query,
+          n_results=n_results
+      )
+    except Exception as e:
+      print(f"Problem: {e}")
+
+    # Chroma returns: { ids: [[]], documents: [[]], metadatas: [[]], ... }
+    # Flatten & format it for API response
+    formatted = []
+    for i in range(len(results.get("ids", [[]])[0])):
+      formatted.append({
+          "id": results["ids"][0][i],
+          "document": results["documents"][0][i],
+          "metadata": results["metadatas"][0][i],
+          "distance": (
+              results["distances"][0][i]
+              if "distances" in results and results["distances"] else None
+          )
+      })
+
+    return formatted

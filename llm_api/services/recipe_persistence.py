@@ -80,16 +80,11 @@ class RecipePersistence:
 
     response = await self.fm_api_client.create_recipe(recipe_data)
 
-    try:
-      self.chroma.add(
-          ids=[str(response.get("id"))],
-          documents=[text],
-          metadatas=[metadata],
-      )
-    except Exception as e:
-      print(f"Here is the metadata: {metadata}")
-      print(f"Here is the problem: {e}")
-      return "broke"
+    self.chroma.add(
+        ids=[str(response.get("id"))],
+        documents=[text],
+        metadatas=[metadata],
+    )
 
     async with AsyncSessionLocal() as db:
       save_url_response = await RecipeService.create_recipe(

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from database import get_db
-from schemas.Recipe import RecipeCreate, RecipeResponse
+from schemas.Recipe import RecipeCreate, RecipeResponse, RecipeQueryResult
 from services.recipe_service import RecipeService
 from constants import API_CONTEXT_PATH
 
@@ -33,6 +33,14 @@ async def get_recipes(
       skip=skip,
       limit=limit,
   )
+
+
+@router.get("/query", response_model=List[RecipeQueryResult])
+async def query_recipes(
+    query: str = Query(..., description="Text to search for"),
+    n_results: int = Query(5, description="Number of results to return")
+):
+  return await RecipeService.query_recipes(query=query, n_results=n_results)
 
 
 @router.get("/{recipe_id}", response_model=RecipeResponse)
