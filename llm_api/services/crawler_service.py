@@ -98,8 +98,7 @@ class CrawlerService:
     try:
       all_recipe_urls = await SitemapService.get_recipe_urls_from_sitemap(
           SITEMAP_URL,
-          url_filter="/recipes/",
-          limit=50
+          url_filter="/recipes/"
       )
 
       recipe_urls = await RecipePersistence.check_recipe_urls_against_db(all_recipe_urls)

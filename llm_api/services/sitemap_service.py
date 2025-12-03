@@ -33,7 +33,7 @@ class SitemapService:
       namespace = {"ns": "http://www.sitemaps.org/schemas/sitemap/0.9"}
       all_urls = [loc.text for loc in root.findall(".//ns:loc", namespace)]
 
-      filtered_urls = [u for u in all_urls if url_filter in u][:20]
+      filtered_urls = [u for u in all_urls if url_filter in u]
 
       if limit:
         filtered_urls = filtered_urls[:limit]

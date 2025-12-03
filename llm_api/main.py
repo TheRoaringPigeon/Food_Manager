@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
   yield
 
   # Shutdown: Release lock if held
-  await app.state.crawler_service.release_lock()
+  await app.state.crawler_service._release_lock()
 
 
 app = FastAPI(
