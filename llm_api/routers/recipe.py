@@ -12,6 +12,10 @@ router = APIRouter(
 )
 
 
+def get_recipe_service() -> RecipeService:
+  return RecipeService()
+
+
 @router.post("", response_model=RecipeResponse, status_code=201)
 async def create_recipe(
     recipe: RecipeCreate,
@@ -38,9 +42,10 @@ async def get_recipes(
 @router.get("/query", response_model=List[RecipeQueryResult])
 async def query_recipes(
     query: str = Query(..., description="Text to search for"),
-    n_results: int = Query(5, description="Number of results to return")
+    n_results: int = Query(5, description="Number of results to return"),
+    service: RecipeService = Depends(get_recipe_service)
 ):
-  return await RecipeService.query_recipes(query=query, n_results=n_results)
+  return await service.query_recipes(query=query, n_results=n_results)
 
 
 @router.get("/{recipe_id}", response_model=RecipeResponse)

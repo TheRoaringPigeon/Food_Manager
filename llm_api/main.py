@@ -1,3 +1,14 @@
+import logging
+# Force-disable noisy httpx/httpcore debug logs
+try:
+  for name in ["httpcore", "httpx"]:
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.CRITICAL)
+    logger.propagate = False
+    logger.handlers = []
+except:
+  pass
+
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import uvicorn

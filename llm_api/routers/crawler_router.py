@@ -50,5 +50,5 @@ async def force_unlock(
     service: CrawlerService = Depends(get_crawler_service)
 ):
   """Force release the crawl lock (use with caution)"""
-  await service.release_lock()
+  await service._release_lock()
   return {"message": "Lock released successfully"}

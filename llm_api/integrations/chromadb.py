@@ -1,6 +1,7 @@
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 from constants import OLLAMA_HOST, OLLAMA_MODEL, CHROMA_HOST, CHROMA_PORT
 from chromadb import HttpClient
+from typing import Any
 
 embedding_fn = OllamaEmbeddingFunction(
     model_name=OLLAMA_MODEL,
@@ -20,6 +21,15 @@ class ChromaRepository:
         name=collection_name,
         embedding_function=embedding_fn
     )
+
+  def process_json_for_vector_db(self, data: dict[str: Any]) -> dict[str: Any]:
+    """Take JSON and prepare it in the format that the vector database expects"""
+    if isinstance(data, dict):
+      return {k: self.process_json_for_vector_db(v) for k, v in data.items()}
+    elif isinstance(data, list):
+      return ", ".join(str(item) for item in data)
+    else:
+      return data
 
   def add(
       self,

@@ -2,6 +2,7 @@
 from typing import List
 from xml.etree import ElementTree
 import aiohttp
+from constants import CRAWL_LIMIT
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -11,7 +12,7 @@ class SitemapService:
   """Handles fetching and parsing XML sitemaps."""
 
   @staticmethod
-  async def get_recipe_urls_from_sitemap(sitemap_url: str, url_filter: str = "/recipes/", limit: int = None) -> List[str]:
+  async def get_recipe_urls_from_sitemap(sitemap_url: str, url_filter: str = "/recipes/", limit: int = CRAWL_LIMIT) -> List[str]:
     """
     Fetch URLs from the sitemap that match the given filter.
 

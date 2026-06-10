@@ -1,0 +1,4 @@
+// .claude/settings.json
+{
+  "plansDirectory": ".claude/plans"
+}
