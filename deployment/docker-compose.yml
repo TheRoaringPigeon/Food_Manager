@@ -1,21 +1,56 @@
 services:
-  # llm_api:
-  #   build: 
-  #     dockerfile: ../deployment/Dockerfile.llm-api
-  #     context: ../llm_api
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - ./output:/app/output
-  #   environment:
-  #     - PYTHONUNBUFFERED=1
-  #     - DB_NAME=llm_api
-  #   env_file:
-  #     - .env
-  #   restart: unless-stopped
-  #   shm_size: '2gb'  # Important for Chromium
-  #   networks:
-  #     - fm-net
+  llm_api:
+    build:
+      dockerfile: ../deployment/Dockerfile.llm-api
+      context: ../llm_api
+    container_name: llm_api
+    ports:
+      - "5002:5002"
+    volumes:
+      - ../llm_api:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - APP_ENVIRONMENT=development
+      - DB_HOST=postgres
+      - DB_NAME=llm_api
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - OLLAMA_HOST=http://fm-llm:11434
+      - FM_API=http://fm_api:5001
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_started
+      chromadb:
+        condition: service_started
+    shm_size: '2gb'
+    networks:
+      - fm-net
+    restart: unless-stopped
+
+  fm_api:
+    build:
+      dockerfile: ../deployment/Dockerfile.fm-api
+      context: ../fm_api
+    container_name: fm_api
+    ports:
+      - "5001:5001"
+    volumes:
+      - ../fm_api:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - APP_ENVIRONMENT=development
+      - DB_HOST=postgres
+      - DB_NAME=fm_api
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_started
+    networks:
+      - fm-net
+    restart: unless-stopped
 
   postgres:
     image: postgres:16

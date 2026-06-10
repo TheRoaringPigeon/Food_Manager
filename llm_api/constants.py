@@ -49,6 +49,8 @@ TAG_METADATA = [
     }
 ]
 
+CRAWL_LIMIT = int(os.getenv("CRAWL_LIMIT")) if os.getenv("CRAWL_LIMIT") else None
+
 CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")

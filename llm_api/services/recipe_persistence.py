@@ -1,9 +1,11 @@
 """Service for persisting recipe data to database and ChromaDB."""
+import asyncio
 from typing import List
 from urllib.parse import urlparse, urlunparse
 from database import AsyncSessionLocal
 from integrations.chromadb import ChromaRepository
 from integrations.fm_api import FMApiClientAsync
+from integrations.llm import OllamaLLM
 from schemas.Recipe import RecipeCreate
 from services.recipe_service import RecipeService
 from utils.html_utils import html_unescape_recursive
@@ -15,7 +17,12 @@ logger = get_logger(__name__)
 class RecipePersistence:
   """Handles saving recipe data to database and vector store."""
 
-  def __init__(self, fm_api_client: FMApiClientAsync = None, chroma_repo: ChromaRepository = None):
+  def __init__(
+          self,
+          fm_api_client: FMApiClientAsync = None,
+          chroma_repo: ChromaRepository = None,
+          llm_client: OllamaLLM = None
+  ):
     """
     Initialize the persistence service.
 
@@ -25,46 +32,15 @@ class RecipePersistence:
     """
     self.fm_api_client = fm_api_client or FMApiClientAsync()
     self.chroma = chroma_repo or ChromaRepository()
+    self.llm_client = llm_client or OllamaLLM()
 
-  @staticmethod
-  def build_document(recipe: dict) -> str:
-    """
-    Build a text document from recipe data for vector storage.
-
-    Args:
-        recipe: Recipe dictionary with name, ingredients, and instructions
-
-    Returns:
-        Formatted text document
-    """
-    return (
-        f"{recipe['name']}\n\n"
-        f"Ingredients:\n" + "\n".join(recipe['recipeIngredient']) + "\n\n"
-        f"Instructions:\n" + "\n".join(recipe['recipeInstructions'])
+  async def prepare_semantic_data(self, recipe_data: dict) -> tuple[str, dict]:
+    text, pre_processed_metadata = await asyncio.gather(
+        self.llm_client.build_document(recipe=recipe_data),
+        self.llm_client.build_metadata(recipe=recipe_data)
     )
-
-  @staticmethod
-  def build_metadata(recipe: dict) -> dict:
-    """
-    Build metadata dictionary from recipe data.
-
-    Args:
-        recipe: Recipe dictionary
-
-    Returns:
-        Metadata dictionary for vector storage
-    """
-    prepTime = recipe.get("prepTime")
-    cookTime = recipe.get("cookTime")
-    return {
-        "name": recipe["name"],
-        "category": ", ".join(recipe.get("recipeCategory", [])),
-        "cuisine": ", ".join(recipe.get("recipeCuisine", [])),
-        "keywords": recipe.get("keywords"),
-        "prepTime": prepTime if prepTime else "0 minutes",
-        "cookTime": cookTime if cookTime else "0 minutes",
-        "numIngredients": len(recipe.get("recipeIngredient", [])),
-    }
+    processed_metadata = self.chroma.process_json_for_vector_db(pre_processed_metadata)
+    return (text, processed_metadata)
 
   async def save_recipe(self, result: dict):
     """
@@ -75,11 +51,9 @@ class RecipePersistence:
     """
     recipe_data = html_unescape_recursive(result)
 
-    text = self.build_document(recipe_data)
-    metadata = self.build_metadata(recipe_data)
+    text, metadata = await self.prepare_semantic_data(recipe_data=recipe_data)
 
     response = await self.fm_api_client.create_recipe(recipe_data)
-
     self.chroma.add(
         ids=[str(response.get("id"))],
         documents=[text],

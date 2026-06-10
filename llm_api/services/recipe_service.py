@@ -8,8 +8,14 @@ from integrations.llm import OllamaLLM
 
 
 class RecipeService:
-  repo = ChromaRepository()
-  llm = OllamaLLM()
+
+  def __init__(
+      self,
+      chroma_repo: ChromaRepository = None,
+      llm_client: OllamaLLM = None
+  ):
+    self.repo = chroma_repo or ChromaRepository()
+    self.llm = llm_client or OllamaLLM()
 
   @staticmethod
   async def create_recipe(db: AsyncSession, recipe: RecipeCreate) -> Recipe:
@@ -68,18 +74,13 @@ class RecipeService:
 
     return formatted
 
-  @staticmethod
-  async def query_recipes(query: str, n_results: int = 5):
-    """
-    Query ChromaDB for recipes based on text search.
-    """
-    interpreted = RecipeService.llm.interpret_recipe_query(query)
+  async def query_recipes(self, query: str, n_results: int = 5):
+    """Query ChromaDB for recipes based on text search."""
+    interpreted = await self.llm.interpret_recipe_query(query)
     semantic = interpreted.get("semantic_query", query)
     filters = interpreted.get("filters")
 
-    # Convert filters to ChromaDB's expected format
     if filters:
-      # Wrap multiple conditions in $and
       conditions = []
       for field, condition in filters.items():
         conditions.append({field: condition})
@@ -90,16 +91,15 @@ class RecipeService:
         filters = conditions[0]
       else:
         filters = None
-    print(f"####\n####\n####\n####\nsemantic: {semantic}\nfilters: {filters}")
+
     try:
-      results = RecipeService.repo.query(
+      results = self.repo.query(
           text=semantic,
           n_results=n_results,
           where=filters
       )
-    except Exception as e:
-      # Fallback to query without filters
-      results = RecipeService.repo.query(
+    except Exception:
+      results = self.repo.query(
           text=semantic,
           n_results=n_results
       )
