@@ -18,10 +18,10 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 shadow-sm">
+    <div className="min-h-screen background-canvas">
+      <header className="background-surface border-b border-line shadow-sm">
         <div className="max-w-6xl mx-auto px-4 flex items-center gap-8 h-14">
-          <span className="font-semibold text-gray-800 text-lg">Food Manager</span>
+          <span className="font-semibold foreground-content text-lg">Food Manager</span>
           <nav className="flex gap-1">
             {navItems.map(({ to, label }) => (
               <NavLink
@@ -30,8 +30,8 @@ export default function Layout() {
                 className={({ isActive }) =>
                   `px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'background-primary-soft foreground-primary-dim'
+                      : 'foreground-subtle hover:foreground-content hover:background-surface-raised'
                   }`
                 }
               >
@@ -40,12 +40,12 @@ export default function Layout() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3">
-            <Link to="/profile" className="text-sm text-gray-500 hover:text-indigo-600 transition-colors">
+            <Link to="/profile" className="text-sm foreground-subtle hover:foreground-primary transition-colors">
               {user?.username}
             </Link>
             <button
               onClick={handleLogout}
-              className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+              className="px-3 py-1.5 text-sm foreground-subtle border border-line rounded hover:background-surface-raised transition-colors"
             >
               Logout
             </button>

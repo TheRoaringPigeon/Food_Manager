@@ -93,10 +93,10 @@ export default function IngredientsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">Ingredients</h1>
+        <h1 className="text-2xl font-bold foreground-content">Ingredients</h1>
         <button
           onClick={() => setShowForm(v => !v)}
-          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700"
+          className="px-4 py-2 background-primary text-white text-sm font-medium rounded hover:background-primary-hover"
         >
           {showForm ? 'Cancel' : '+ Add Ingredient'}
         </button>
@@ -109,21 +109,21 @@ export default function IngredientsPage() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-6 p-4 bg-white border border-gray-200 rounded-lg space-y-3">
+        <form onSubmit={handleSubmit} className="mb-6 p-4 background-surface border border-line rounded-lg space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Name *</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Name *</label>
               <input
                 required
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Type</label>
               <select
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={form.ingredient_type}
                 onChange={e => setForm(f => ({ ...f, ingredient_type: e.target.value as IngredientType }))}
               >
@@ -131,26 +131,26 @@ export default function IngredientsPage() {
               </select>
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Description</label>
               <input
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Quantity</label>
               <input
                 type="number"
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={form.quantity ?? ''}
                 onChange={e => setForm(f => ({ ...f, quantity: e.target.value ? Number(e.target.value) : null }))}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Unit</label>
               <input
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 placeholder="kg, cup, tsp..."
                 value={form.unit}
                 onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
@@ -168,7 +168,7 @@ export default function IngredientsPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 disabled:opacity-50"
+            className="px-4 py-2 background-primary text-white text-sm font-medium rounded hover:background-primary-hover disabled:opacity-50"
           >
             {submitting ? 'Saving...' : 'Create Ingredient'}
           </button>
@@ -180,12 +180,12 @@ export default function IngredientsPage() {
         <input
           type="text"
           placeholder="Search ingredients..."
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm w-52"
+          className="border border-line rounded px-3 py-1.5 text-sm w-52"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
         <select
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm"
+          className="border border-line rounded px-3 py-1.5 text-sm"
           value={typeFilter}
           onChange={e => setTypeFilter(e.target.value)}
         >
@@ -193,7 +193,7 @@ export default function IngredientsPage() {
           {INGREDIENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
         <select
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm"
+          className="border border-line rounded px-3 py-1.5 text-sm"
           value={availFilter}
           onChange={e => setAvailFilter(e.target.value)}
         >
@@ -202,37 +202,37 @@ export default function IngredientsPage() {
           <option value="false">Out of stock</option>
         </select>
         <select
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm"
+          className="border border-line rounded px-3 py-1.5 text-sm"
           value={pageSize}
           onChange={e => setPageSize(Number(e.target.value))}
         >
           {PAGE_SIZES.map(s => <option key={s} value={s}>{s} per page</option>)}
         </select>
-        <span className="ml-auto text-xs text-gray-500">{total} result{total !== 1 ? 's' : ''}</span>
+        <span className="ml-auto text-xs foreground-subtle">{total} result{total !== 1 ? 's' : ''}</span>
       </div>
 
       {loading ? (
-        <p className="text-gray-500 text-sm">Loading...</p>
+        <p className="foreground-subtle text-sm">Loading...</p>
       ) : (
         <>
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="background-surface border border-line rounded-lg overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="background-canvas border-b border-line">
                 <tr>
                   {['ID', 'Name', 'Type', 'Qty / Unit', 'Status', ''].map(h => (
-                    <th key={h} className="text-left px-4 py-2 text-xs font-medium text-gray-600">{h}</th>
+                    <th key={h} className="text-left px-4 py-2 text-xs font-medium foreground-subtle">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-divider">
                 {ingredients.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">No ingredients found.</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-6 text-center foreground-dim">No ingredients found.</td></tr>
                 ) : ingredients.map(ing => (
-                  <tr key={ing.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-gray-400">{ing.id}</td>
-                    <td className="px-4 py-2 font-medium text-gray-900">{ing.name}</td>
-                    <td className="px-4 py-2 text-gray-600 capitalize">{ing.ingredient_type}</td>
-                    <td className="px-4 py-2 text-gray-600">
+                  <tr key={ing.id} className="hover:background-surface-raised">
+                    <td className="px-4 py-2 foreground-dim">{ing.id}</td>
+                    <td className="px-4 py-2 font-medium foreground-content">{ing.name}</td>
+                    <td className="px-4 py-2 foreground-subtle capitalize">{ing.ingredient_type}</td>
+                    <td className="px-4 py-2 foreground-subtle">
                       {ing.quantity != null ? `${ing.quantity} ${ing.unit}` : ing.unit || '—'}
                     </td>
                     <td className="px-4 py-2">
@@ -245,7 +245,7 @@ export default function IngredientsPage() {
                     <td className="px-4 py-2">
                       <button
                         onClick={() => handleToggle(ing.id)}
-                        className="text-xs text-indigo-600 hover:underline"
+                        className="text-xs foreground-primary hover:underline"
                       >
                         Toggle
                       </button>
@@ -258,19 +258,19 @@ export default function IngredientsPage() {
 
           {/* Pagination */}
           <div className="flex items-center justify-between mt-3">
-            <span className="text-xs text-gray-500">Page {page} of {totalPages}</span>
+            <span className="text-xs foreground-subtle">Page {page} of {totalPages}</span>
             <div className="flex gap-2">
               <button
                 onClick={() => setPage(p => p - 1)}
                 disabled={page <= 1}
-                className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40"
+                className="px-3 py-1.5 text-xs border border-line rounded hover:background-surface-raised disabled:opacity-40"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage(p => p + 1)}
                 disabled={page >= totalPages}
-                className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40"
+                className="px-3 py-1.5 text-xs border border-line rounded hover:background-surface-raised disabled:opacity-40"
               >
                 Next
               </button>
