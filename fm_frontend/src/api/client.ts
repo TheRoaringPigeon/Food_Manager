@@ -3,13 +3,13 @@ const TOKEN_KEY = 'fm_token'
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem(TOKEN_KEY)
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
 
   const res = await fetch(`${FM_API}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       ...authHeader,
-      ...options?.headers,
+      ...(options?.headers as Record<string, string> | undefined),
     },
     ...options,
   })

@@ -24,16 +24,16 @@ function ConfirmModal({
 }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">{title}</h3>
-        <div className="text-sm text-gray-600 mb-6">{message}</div>
+      <div className="background-surface rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+        <h3 className="text-lg font-semibold foreground-content mb-2">{title}</h3>
+        <div className="text-sm foreground-subtle mb-6">{message}</div>
         <div className="flex justify-end gap-3">
           <button onClick={onCancel} disabled={loading}
-            className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">
+            className="px-4 py-2 text-sm foreground-content border border-line rounded hover:background-surface-raised disabled:opacity-50">
             Cancel
           </button>
           <button onClick={onConfirm} disabled={loading}
-            className={`px-4 py-2 text-sm text-white rounded disabled:opacity-50 ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+            className={`px-4 py-2 text-sm text-white rounded disabled:opacity-50 ${danger ? 'bg-red-600 hover:bg-red-700' : 'background-primary hover:background-primary-hover'}`}>
             {loading ? 'Please wait...' : confirmLabel}
           </button>
         </div>
@@ -131,49 +131,49 @@ function UsersTab() {
       {loadError && <p className="text-red-600 text-sm">{loadError}</p>}
 
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium text-gray-700">Users</h2>
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+        <h2 className="text-lg font-medium foreground-content">Users</h2>
+        <label className="flex items-center gap-2 text-sm foreground-subtle cursor-pointer select-none">
           <input
             type="checkbox" checked={includeInactive}
             onChange={e => setIncludeInactive(e.target.checked)}
-            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            className="rounded border-gray-300"
           />
           Show inactive users
         </label>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="background-surface rounded-lg border border-line overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="background-canvas border-b border-line">
             <tr>
-              <th className="text-left px-4 py-2 text-gray-600 font-medium">Username</th>
-              <th className="text-left px-4 py-2 text-gray-600 font-medium">Role</th>
-              <th className="text-left px-4 py-2 text-gray-600 font-medium">Family</th>
-              <th className="text-left px-4 py-2 text-gray-600 font-medium">Status</th>
+              <th className="text-left px-4 py-2 foreground-subtle font-medium">Username</th>
+              <th className="text-left px-4 py-2 foreground-subtle font-medium">Role</th>
+              <th className="text-left px-4 py-2 foreground-subtle font-medium">Family</th>
+              <th className="text-left px-4 py-2 foreground-subtle font-medium">Status</th>
               <th className="px-4 py-2"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-divider">
             {users.map(u => (
-              <tr key={u.id} className={`${u.id === currentUser?.id ? 'bg-indigo-50' : ''} ${!u.is_active ? 'opacity-50' : ''}`}>
-                <td className="px-4 py-2 text-gray-800">
+              <tr key={u.id} className={`${u.id === currentUser?.id ? 'background-primary-soft' : ''} ${!u.is_active ? 'opacity-50' : ''}`}>
+                <td className="px-4 py-2 foreground-content">
                   {u.username}
-                  {u.id === currentUser?.id && <span className="ml-2 text-xs text-indigo-500">(you)</span>}
+                  {u.id === currentUser?.id && <span className="ml-2 text-xs foreground-primary">(you)</span>}
                 </td>
                 <td className="px-4 py-2">
                   <select
                     value={u.role}
                     onChange={e => handleChangeRole(u.id, e.target.value)}
                     disabled={u.id === currentUser?.id || !u.is_active}
-                    className="border border-gray-300 rounded px-2 py-1 text-xs disabled:opacity-50"
+                    className="border border-line rounded px-2 py-1 text-xs disabled:opacity-50"
                   >
                     <option value="admin">Admin</option>
                     <option value="standard">Standard</option>
                   </select>
                 </td>
-                <td className="px-4 py-2 text-gray-600">{familyName(u.family_id)}</td>
+                <td className="px-4 py-2 foreground-subtle">{familyName(u.family_id)}</td>
                 <td className="px-4 py-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.is_active ? 'bg-green-100 text-green-700' : 'background-surface-raised foreground-subtle'}`}>
                     {u.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </td>
@@ -198,7 +198,7 @@ function UsersTab() {
               </tr>
             ))}
             {users.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-4 text-center text-gray-400">No users</td></tr>
+              <tr><td colSpan={5} className="px-4 py-4 text-center foreground-dim">No users</td></tr>
             )}
           </tbody>
         </table>
@@ -207,29 +207,29 @@ function UsersTab() {
       {/* Create user */}
       <form onSubmit={handleCreateUser} className="flex gap-2 items-end flex-wrap">
         <div>
-          <label className="block text-xs text-gray-600 mb-1">Username</label>
+          <label className="block text-xs foreground-subtle mb-1">Username</label>
           <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)}
             required minLength={3}
-            className="border border-gray-300 rounded px-2 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="border border-line rounded px-2 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="username" />
         </div>
         <div>
-          <label className="block text-xs text-gray-600 mb-1">Password</label>
+          <label className="block text-xs foreground-subtle mb-1">Password</label>
           <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
             required minLength={6}
-            className="border border-gray-300 rounded px-2 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="border border-line rounded px-2 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="password" />
         </div>
         <div>
-          <label className="block text-xs text-gray-600 mb-1">Role</label>
+          <label className="block text-xs foreground-subtle mb-1">Role</label>
           <select value={newRole} onChange={e => setNewRole(e.target.value as UserRole)}
-            className="border border-gray-300 rounded px-2 py-1.5 text-sm">
+            className="border border-line rounded px-2 py-1.5 text-sm">
             <option value="standard">Standard</option>
             <option value="admin">Admin</option>
           </select>
         </div>
         <button type="submit" disabled={createLoading}
-          className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+          className="px-3 py-1.5 background-primary text-white rounded text-sm font-medium hover:background-primary-hover disabled:opacity-50">
           {createLoading ? 'Creating...' : 'Create user'}
         </button>
         {createError && <p className="text-xs text-red-600 w-full">{createError}</p>}
@@ -238,7 +238,7 @@ function UsersTab() {
       {pendingDeactivate && (
         <ConfirmModal
           title="Deactivate user"
-          message={<>Are you sure you want to deactivate <span className="font-medium text-gray-900">{pendingDeactivate.username}</span>? They will no longer be able to log in.</>}
+          message={<>Are you sure you want to deactivate <span className="font-medium foreground-content">{pendingDeactivate.username}</span>? They will no longer be able to log in.</>}
           confirmLabel="Deactivate" danger
           onConfirm={handleConfirmDeactivate}
           onCancel={() => setPendingDeactivate(null)}
@@ -377,12 +377,12 @@ function FamiliesTab() {
     <div className="flex flex-col gap-6">
       {loadError && <p className="text-red-600 text-sm">{loadError}</p>}
 
-      <h2 className="text-lg font-medium text-gray-700">Families</h2>
+      <h2 className="text-lg font-medium foreground-content">Families</h2>
 
       {/* Family list */}
       <div className="flex flex-col gap-3">
         {families.map(f => (
-          <div key={f.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div key={f.id} className="background-surface border border-line rounded-lg overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-3">
               {renamingId === f.id ? (
                 <div className="flex items-center gap-2 flex-1">
@@ -390,26 +390,26 @@ function FamiliesTab() {
                     autoFocus type="text" value={renameValue}
                     onChange={e => setRenameValue(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleRename(f.id); if (e.key === 'Escape') setRenamingId(null) }}
-                    className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48"
+                    className="border border-line rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary w-48"
                   />
-                  <button onClick={() => handleRename(f.id)} className="text-xs text-indigo-600 hover:underline">Save</button>
-                  <button onClick={() => setRenamingId(null)} className="text-xs text-gray-500 hover:underline">Cancel</button>
+                  <button onClick={() => handleRename(f.id)} className="text-xs foreground-primary hover:underline">Save</button>
+                  <button onClick={() => setRenamingId(null)} className="text-xs foreground-subtle hover:underline">Cancel</button>
                   {renameError && <span className="text-xs text-red-600">{renameError}</span>}
                 </div>
               ) : (
-                <span className="font-medium text-gray-800 flex-1">{f.name}</span>
+                <span className="font-medium foreground-content flex-1">{f.name}</span>
               )}
-              <span className="text-xs text-gray-400">{f.users.length} member{f.users.length !== 1 ? 's' : ''}</span>
+              <span className="text-xs foreground-dim">{f.users.length} member{f.users.length !== 1 ? 's' : ''}</span>
               <button
                 onClick={() => setExpandedFamily(expandedFamily === f.id ? null : f.id)}
-                className="text-xs text-gray-500 hover:text-gray-700"
+                className="text-xs foreground-subtle hover:foreground-content"
               >
                 {expandedFamily === f.id ? 'Hide' : 'Show'} members
               </button>
               {renamingId !== f.id && (
                 <button
                   onClick={() => { setRenamingId(f.id); setRenameValue(f.name); setRenameError('') }}
-                  className="text-xs text-indigo-600 hover:underline"
+                  className="text-xs foreground-primary hover:underline"
                 >
                   Rename
                 </button>
@@ -420,16 +420,16 @@ function FamiliesTab() {
             </div>
 
             {expandedFamily === f.id && (
-              <div className="border-t border-gray-100">
+              <div className="border-t border-divider">
                 {f.users.length === 0 ? (
-                  <p className="px-4 py-3 text-sm text-gray-400">No members</p>
+                  <p className="px-4 py-3 text-sm foreground-dim">No members</p>
                 ) : (
                   <table className="w-full text-sm">
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-divider">
                       {f.users.map(u => (
-                        <tr key={u.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 text-gray-700">{u.username}</td>
-                          <td className="px-4 py-2 text-gray-500 text-xs capitalize">{u.role}</td>
+                        <tr key={u.id} className="hover:background-surface-raised">
+                          <td className="px-4 py-2 foreground-content">{u.username}</td>
+                          <td className="px-4 py-2 foreground-subtle text-xs capitalize">{u.role}</td>
                           <td className="px-4 py-2 text-right">
                             <button
                               onClick={() => handleRemoveFromFamily(u.id, f.id)}
@@ -447,20 +447,20 @@ function FamiliesTab() {
             )}
           </div>
         ))}
-        {families.length === 0 && <p className="text-sm text-gray-400">No families yet</p>}
+        {families.length === 0 && <p className="text-sm foreground-dim">No families yet</p>}
       </div>
 
       {/* Create family */}
       <form onSubmit={handleCreateFamily} className="flex gap-2 items-end">
         <div>
-          <label className="block text-xs text-gray-600 mb-1">Family name</label>
+          <label className="block text-xs foreground-subtle mb-1">Family name</label>
           <input type="text" value={newFamilyName} onChange={e => setNewFamilyName(e.target.value)}
             required
-            className="border border-gray-300 rounded px-2 py-1.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="border border-line rounded px-2 py-1.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="family name" />
         </div>
         <button type="submit" disabled={createLoading}
-          className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+          className="px-3 py-1.5 background-primary text-white rounded text-sm font-medium hover:background-primary-hover disabled:opacity-50">
           {createLoading ? 'Creating...' : 'Create family'}
         </button>
         {createError && <p className="text-xs text-red-600">{createError}</p>}
@@ -468,32 +468,32 @@ function FamiliesTab() {
 
       {/* Assign user to family */}
       <div>
-        <h3 className="text-base font-medium text-gray-700 mb-3">Assign user to family</h3>
+        <h3 className="text-base font-medium foreground-content mb-3">Assign user to family</h3>
         <input
           type="text" value={userSearch} onChange={e => setUserSearch(e.target.value)}
           placeholder="Search users..."
-          className="border border-gray-300 rounded px-3 py-1.5 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+          className="border border-line rounded px-3 py-1.5 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary mb-3"
         />
         {userSearch && (
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="background-surface border border-line rounded-lg overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="background-canvas border-b border-line">
                 <tr>
-                  <th className="text-left px-4 py-2 text-gray-600 font-medium">Username</th>
-                  <th className="text-left px-4 py-2 text-gray-600 font-medium">Current family</th>
+                  <th className="text-left px-4 py-2 foreground-subtle font-medium">Username</th>
+                  <th className="text-left px-4 py-2 foreground-subtle font-medium">Current family</th>
                   <th className="px-4 py-2"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-divider">
                 {filteredUsers.map(u => (
                   <tr key={u.id}>
-                    <td className="px-4 py-2 text-gray-800">{u.username}</td>
-                    <td className="px-4 py-2 text-gray-500">{familyName(u.family_id)}</td>
+                    <td className="px-4 py-2 foreground-content">{u.username}</td>
+                    <td className="px-4 py-2 foreground-subtle">{familyName(u.family_id)}</td>
                     <td className="px-4 py-2">
                       <select
                         value=""
                         onChange={e => { if (e.target.value) handleAssignClick(u, Number(e.target.value)) }}
-                        className="border border-gray-300 rounded px-2 py-1 text-xs"
+                        className="border border-line rounded px-2 py-1 text-xs"
                       >
                         <option value="" disabled>Assign to...</option>
                         {families.filter(f => f.id !== u.family_id).map(f => (
@@ -504,7 +504,7 @@ function FamiliesTab() {
                   </tr>
                 ))}
                 {filteredUsers.length === 0 && (
-                  <tr><td colSpan={3} className="px-4 py-3 text-center text-gray-400">No active users found</td></tr>
+                  <tr><td colSpan={3} className="px-4 py-3 text-center foreground-dim">No active users found</td></tr>
                 )}
               </tbody>
             </table>
@@ -515,7 +515,7 @@ function FamiliesTab() {
       {pendingDeleteFamily && (
         <ConfirmModal
           title="Delete family"
-          message={<>Are you sure you want to delete <span className="font-medium text-gray-900">{pendingDeleteFamily.name}</span>? Its {pendingDeleteFamily.users.length} member{pendingDeleteFamily.users.length !== 1 ? 's' : ''} will become family-less.</>}
+          message={<>Are you sure you want to delete <span className="font-medium foreground-content">{pendingDeleteFamily.name}</span>? Its {pendingDeleteFamily.users.length} member{pendingDeleteFamily.users.length !== 1 ? 's' : ''} will become family-less.</>}
           confirmLabel="Delete" danger
           onConfirm={handleConfirmDelete}
           onCancel={() => setPendingDeleteFamily(null)}
@@ -526,7 +526,7 @@ function FamiliesTab() {
       {pendingAssign && (
         <ConfirmModal
           title="Move user"
-          message={<><span className="font-medium text-gray-900">{pendingAssign.user.username}</span> is currently in <span className="font-medium text-gray-900">{familyName(pendingAssign.user.family_id)}</span>. Move them to <span className="font-medium text-gray-900">{families.find(f => f.id === pendingAssign.familyId)?.name}</span>?</>}
+          message={<><span className="font-medium foreground-content">{pendingAssign.user.username}</span> is currently in <span className="font-medium foreground-content">{familyName(pendingAssign.user.family_id)}</span>. Move them to <span className="font-medium foreground-content">{families.find(f => f.id === pendingAssign.familyId)?.name}</span>?</>}
           confirmLabel="Move"
           onConfirm={handleConfirmAssign}
           onCancel={() => setPendingAssign(null)}
@@ -543,17 +543,17 @@ export default function AdminPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Admin</h1>
+      <h1 className="text-2xl font-semibold foreground-content">Admin</h1>
 
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-line">
         {(['users', 'families'] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium capitalize border-b-2 transition-colors ${
               tab === t
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'border-primary foreground-primary'
+                : 'border-transparent foreground-subtle hover:foreground-content'
             }`}
           >
             {t}

@@ -47,14 +47,14 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-2xl"
+        className="background-surface rounded-lg shadow-xl w-full max-w-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Recipe Details</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line">
+          <h2 className="text-lg font-semibold foreground-content">Recipe Details</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            className="foreground-dim hover:foreground-subtle text-xl leading-none"
           >
             ×
           </button>
@@ -69,18 +69,18 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Name *</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Name *</label>
               <input
                 required
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={form.name ?? ''}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Type</label>
               <select
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={form.recipe_type}
                 onChange={e => setForm(f => ({ ...f, recipe_type: e.target.value as RecipeType }))}
               >
@@ -88,61 +88,61 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
               </select>
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Description</label>
               <input
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={form.description ?? ''}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Ingredients (comma-separated)</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Ingredients (comma-separated)</label>
               <textarea
                 rows={3}
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={ingredientsText}
                 onChange={e => setIngredientsText(e.target.value)}
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Instructions (one per line)</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Instructions (one per line)</label>
               <textarea
                 rows={5}
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={instructionsText}
                 onChange={e => setInstructionsText(e.target.value)}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Prep time (min)</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Prep time (min)</label>
               <input
                 type="number"
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={form.prep_time ?? ''}
                 onChange={e => setForm(f => ({ ...f, prep_time: e.target.value ? Number(e.target.value) : null }))}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cook time (min)</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Cook time (min)</label>
               <input
                 type="number"
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={form.cook_time ?? ''}
                 onChange={e => setForm(f => ({ ...f, cook_time: e.target.value ? Number(e.target.value) : null }))}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Servings</label>
+              <label className="block text-xs font-medium foreground-content mb-1">Servings</label>
               <input
                 type="number"
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm"
+                className="w-full border border-line rounded px-3 py-1.5 text-sm"
                 value={form.servings ?? ''}
                 onChange={e => setForm(f => ({ ...f, servings: e.target.value ? Number(e.target.value) : null }))}
               />
             </div>
           </div>
 
-          <div className="text-xs text-gray-400 space-y-0.5 pt-1">
+          <div className="text-xs foreground-dim space-y-0.5 pt-1">
             <div>ID: {recipe.id}</div>
             {recipe.last_cooked && <div>Last cooked: {new Date(recipe.last_cooked).toLocaleDateString()}</div>}
             <div>Created: {new Date(recipe.created_at).toLocaleDateString()}</div>
@@ -153,14 +153,14 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 disabled:opacity-50"
+              className="px-4 py-2 background-primary text-white text-sm font-medium rounded hover:background-primary-hover disabled:opacity-50"
             >
               {submitting ? 'Saving...' : 'Save'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium foreground-content border border-line rounded hover:background-surface-raised"
             >
               Cancel
             </button>

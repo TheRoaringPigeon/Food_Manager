@@ -1,3 +1,129 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root, [data-theme="indigo"] {
+  --color-primary:        #4f46e5;
+  --color-primary-soft:   #e0e7ff;
+  --color-primary-dim:    #4338ca;
+  --color-primary-hover:  #4338ca;
+  --color-secondary:      #0891b2;
+  --color-secondary-soft: #cffafe;
+  --color-secondary-dim:  #0e7490;
+  --color-accent:         #d97706;
+  --color-accent-soft:    #fef3c7;
+  --color-accent-dim:     #b45309;
+  --color-surface:        #ffffff;
+  --color-canvas:         #eef2ff;
+  --color-content:        #111827;
+  --color-subtle:         #6b7280;
+  --color-line:           #e5e7eb;
+  --color-surface-raised: #e0e7ff;
+  --color-dim:            #9ca3af;
+  --color-divider:        #f3f4f6;
+}
+
+[data-theme="forest"] {
+  --color-primary:        #16a34a;
+  --color-primary-soft:   #dcfce7;
+  --color-primary-dim:    #15803d;
+  --color-primary-hover:  #15803d;
+  --color-secondary:      #0d9488;
+  --color-secondary-soft: #ccfbf1;
+  --color-secondary-dim:  #0f766e;
+  --color-accent:         #ca8a04;
+  --color-accent-soft:    #fef9c3;
+  --color-accent-dim:     #a16207;
+  --color-surface:        #ffffff;
+  --color-canvas:         #f0fdf4;
+  --color-content:        #111827;
+  --color-subtle:         #6b7280;
+  --color-line:           #e5e7eb;
+  --color-surface-raised: #dcfce7;
+  --color-dim:            #9ca3af;
+  --color-divider:        #f3f4f6;
+}
+
+[data-theme="sunset"] {
+  --color-primary:        #ea580c;
+  --color-primary-soft:   #ffedd5;
+  --color-primary-dim:    #c2410c;
+  --color-primary-hover:  #c2410c;
+  --color-secondary:      #f43f5e;
+  --color-secondary-soft: #ffe4e6;
+  --color-secondary-dim:  #e11d48;
+  --color-accent:         #f59e0b;
+  --color-accent-soft:    #fef3c7;
+  --color-accent-dim:     #d97706;
+  --color-surface:        #ffffff;
+  --color-canvas:         #fff7ed;
+  --color-content:        #111827;
+  --color-subtle:         #6b7280;
+  --color-line:           #e5e7eb;
+  --color-surface-raised: #ffedd5;
+  --color-dim:            #9ca3af;
+  --color-divider:        #f3f4f6;
+}
+
+[data-theme="ocean"] {
+  --color-primary:        #0d9488;
+  --color-primary-soft:   #ccfbf1;
+  --color-primary-dim:    #0f766e;
+  --color-primary-hover:  #0f766e;
+  --color-secondary:      #2563eb;
+  --color-secondary-soft: #dbeafe;
+  --color-secondary-dim:  #1d4ed8;
+  --color-accent:         #22d3ee;
+  --color-accent-soft:    #cffafe;
+  --color-accent-dim:     #0891b2;
+  --color-surface:        #ffffff;
+  --color-canvas:         #f0fdfa;
+  --color-content:        #111827;
+  --color-subtle:         #6b7280;
+  --color-line:           #e5e7eb;
+  --color-surface-raised: #ccfbf1;
+  --color-dim:            #9ca3af;
+  --color-divider:        #f3f4f6;
+}
+
+[data-theme="rose"] {
+  --color-primary:        #e11d48;
+  --color-primary-soft:   #ffe4e6;
+  --color-primary-dim:    #be123c;
+  --color-primary-hover:  #be123c;
+  --color-secondary:      #ec4899;
+  --color-secondary-soft: #fce7f3;
+  --color-secondary-dim:  #db2777;
+  --color-accent:         #e879f9;
+  --color-accent-soft:    #fae8ff;
+  --color-accent-dim:     #c026d3;
+  --color-surface:        #ffffff;
+  --color-canvas:         #fff1f2;
+  --color-content:        #111827;
+  --color-subtle:         #6b7280;
+  --color-line:           #e5e7eb;
+  --color-surface-raised: #ffe4e6;
+  --color-dim:            #9ca3af;
+  --color-divider:        #f3f4f6;
+}
+
+[data-theme="night"] {
+  --color-primary:        #818cf8;
+  --color-primary-soft:   #1e1b4b;
+  --color-primary-dim:    #a5b4fc;
+  --color-primary-hover:  #6366f1;
+  --color-secondary:      #34d399;
+  --color-secondary-soft: #064e3b;
+  --color-secondary-dim:  #6ee7b7;
+  --color-accent:         #fbbf24;
+  --color-accent-soft:    #451a03;
+  --color-accent-dim:     #fde68a;
+  --color-surface:        #1e293b;
+  --color-canvas:         #0f172a;
+  --color-content:        #f1f5f9;
+  --color-subtle:         #94a3b8;
+  --color-line:           #334155;
+  --color-surface-raised: #2e4060;
+  --color-dim:            #64748b;
+  --color-divider:        #253447;
+}
