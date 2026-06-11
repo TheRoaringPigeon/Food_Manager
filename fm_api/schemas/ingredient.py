@@ -37,3 +37,7 @@ class IngredientResponse(IngredientBase):
 
   class Config:
     from_attributes = True
+
+
+class IngredientCount(BaseModel):
+  total: int

@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, desc
+from sqlalchemy import select, update, delete, desc, func
 from models.ingredient import Ingredient, IngredientTypeEnum
 from schemas.ingredient import IngredientCreate, IngredientUpdate
 from typing import List, Optional
@@ -45,6 +45,28 @@ class IngredientService:
     query = query.order_by(desc(Ingredient.created_at)).offset(skip).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
+
+  @staticmethod
+  async def count_ingredients(
+      db: AsyncSession,
+      ingredient_type: Optional[IngredientTypeEnum] = None,
+      is_available: Optional[bool] = None,
+      search: Optional[str] = None
+  ) -> int:
+    query = select(func.count()).select_from(Ingredient)
+    if ingredient_type:
+      query = query.filter(Ingredient.ingredient_type == ingredient_type)
+    if is_available is not None:
+      query = query.filter(Ingredient.is_available == is_available)
+    if search:
+      search_term = f"%{search}%"
+      query = query.filter(
+          (Ingredient.name.ilike(search_term)) |
+          (Ingredient.description.ilike(search_term)) |
+          (Ingredient.tags.ilike(search_term))
+      )
+    result = await db.execute(query)
+    return result.scalar_one()
 
   @staticmethod
   async def update_ingredient(

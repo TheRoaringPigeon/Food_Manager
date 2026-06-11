@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from database import get_db
-from schemas.ingredient import IngredientCreate, IngredientUpdate, IngredientResponse
+from schemas.ingredient import IngredientCreate, IngredientUpdate, IngredientResponse, IngredientCount
 from services.ingredient_service import IngredientService
 from models.ingredient import IngredientTypeEnum
 from constants import API_CONTEXT_PATH
@@ -40,6 +40,23 @@ async def get_ingredients(
       is_available=is_available,
       search=search
   )
+
+
+@router.get("/count", response_model=IngredientCount)
+async def count_ingredients(
+    ingredient_type: Optional[IngredientTypeEnum] = None,
+    is_available: Optional[bool] = None,
+    search: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+  """Count ingredients with optional filters"""
+  total = await IngredientService.count_ingredients(
+      db,
+      ingredient_type=ingredient_type,
+      is_available=is_available,
+      search=search
+  )
+  return IngredientCount(total=total)
 
 
 @router.get("/{ingredient_id}", response_model=IngredientResponse)

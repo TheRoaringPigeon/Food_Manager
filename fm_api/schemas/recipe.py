@@ -46,3 +46,7 @@ class RecipeResponse(RecipeBase):
 
   class Config:
     from_attributes = True
+
+
+class RecipeCount(BaseModel):
+  total: int
