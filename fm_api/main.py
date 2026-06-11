@@ -16,8 +16,12 @@ from constants import API_INFO, UVICORN_WORKERS, APP_ENVIRONMENT, TAG_METADATA, 
 from utils.logger import get_logger
 from routers import (
     ingredient_router,
-    recipe_router
+    recipe_router,
+    auth_router,
+    user_router,
+    family_router,
 )
+from utils.seeder import seed_defaults
 
 logger = get_logger(__name__)
 
@@ -25,6 +29,7 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
   logger.info(f"Starting {API_INFO['title']} at port \"{API_INFO['port']}\"")
+  await seed_defaults()
   yield
   logger.info(f"Shutting down {API_INFO['title']}")
 
@@ -37,6 +42,9 @@ app = FastAPI(
     openapi_tags=TAG_METADATA
 )
 
+app.include_router(auth_router)
+app.include_router(user_router)
+app.include_router(family_router)
 app.include_router(recipe_router)
 app.include_router(ingredient_router)
 

@@ -13,7 +13,6 @@ const EMPTY_FORM: CreateRecipePayload = {
   cook_time: null,
   servings: null,
   recipe_type: 'dinner',
-  is_favorite: false,
 }
 
 const PAGE_SIZES = [10, 20, 50]
@@ -217,14 +216,6 @@ export default function RecipesPage() {
               />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.is_favorite}
-              onChange={e => setForm(f => ({ ...f, is_favorite: e.target.checked }))}
-            />
-            Favorite
-          </label>
           <button
             type="submit"
             disabled={submitting}

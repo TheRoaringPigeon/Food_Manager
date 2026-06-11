@@ -29,7 +29,6 @@ export interface CreateRecipePayload {
   cook_time: number | null
   servings: number | null
   recipe_type: RecipeType
-  is_favorite: boolean
 }
 
 export interface UpdateRecipePayload {
@@ -41,5 +40,4 @@ export interface UpdateRecipePayload {
   cook_time?: number | null
   servings?: number | null
   recipe_type?: RecipeType
-  is_favorite?: boolean
 }

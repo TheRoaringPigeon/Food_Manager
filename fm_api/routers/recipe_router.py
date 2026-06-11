@@ -1,25 +1,28 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
+
 from database import get_db
 from schemas.recipe import RecipeCreate, RecipeUpdate, RecipeResponse, RecipeCount
 from services.recipe_service import RecipeService
 from models.recipe import RecipeTypeEnum
+from models.user import User
+from dependencies.auth import get_current_user
 from constants import API_CONTEXT_PATH
 
 router = APIRouter(
     prefix=f"{API_CONTEXT_PATH}/recipes",
-    tags=["recipes"]
+    tags=["recipes"],
 )
 
 
 @router.post("", response_model=RecipeResponse, status_code=201)
 async def create_recipe(
     recipe: RecipeCreate,
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-  """Create a new recipe"""
-  return await RecipeService.create_recipe(db, recipe)
+    return await RecipeService.create_recipe(db, recipe)
 
 
 @router.get("", response_model=List[RecipeResponse])
@@ -31,29 +34,32 @@ async def get_recipes(
     search: Optional[str] = None,
     ids: Optional[str] = Query(None, description="Comma-separated recipe IDs"),
     max_total_time: Optional[int] = Query(None, ge=1),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-  """Get all recipes with optional filters"""
-  parsed_ids = [int(i) for i in ids.split(",") if i.strip()] if ids else None
-  return await RecipeService.get_recipes(
-      db,
-      skip=skip,
-      limit=limit,
-      recipe_type=recipe_type,
-      is_favorite=is_favorite,
-      search=search,
-      ids=parsed_ids,
-      max_total_time=max_total_time
-  )
+    parsed_ids = [int(i) for i in ids.split(",") if i.strip()] if ids else None
+    return await RecipeService.get_recipes(
+        db,
+        family_id=current_user.family_id,
+        skip=skip,
+        limit=limit,
+        recipe_type=recipe_type,
+        is_favorite=is_favorite,
+        search=search,
+        ids=parsed_ids,
+        max_total_time=max_total_time,
+    )
 
 
 @router.get("/recently-cooked", response_model=List[RecipeResponse])
 async def get_recently_cooked(
     limit: int = Query(10, ge=1, le=50),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-  """Get recently cooked recipes"""
-  return await RecipeService.get_recently_cooked(db, limit)
+    if not current_user.family_id:
+        return []
+    return await RecipeService.get_recently_cooked(db, current_user.family_id, limit)
 
 
 @router.get("/count", response_model=RecipeCount)
@@ -62,74 +68,79 @@ async def count_recipes(
     is_favorite: Optional[bool] = None,
     search: Optional[str] = None,
     max_total_time: Optional[int] = Query(None, ge=1),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-  """Count recipes with optional filters"""
-  total = await RecipeService.count_recipes(
-      db,
-      recipe_type=recipe_type,
-      is_favorite=is_favorite,
-      search=search,
-      max_total_time=max_total_time
-  )
-  return RecipeCount(total=total)
+    total = await RecipeService.count_recipes(
+        db,
+        family_id=current_user.family_id,
+        recipe_type=recipe_type,
+        is_favorite=is_favorite,
+        search=search,
+        max_total_time=max_total_time,
+    )
+    return RecipeCount(total=total)
 
 
 @router.get("/{recipe_id}", response_model=RecipeResponse)
 async def get_recipe(
     recipe_id: int,
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-  """Get a specific recipe by ID"""
-  recipe = await RecipeService.get_recipe(db, recipe_id)
-  if not recipe:
-    raise HTTPException(status_code=404, detail="Recipe not found")
-  return recipe
+    recipe = await RecipeService.get_recipe(db, recipe_id, current_user.family_id)
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    return recipe
 
 
 @router.put("/{recipe_id}", response_model=RecipeResponse)
 async def update_recipe(
     recipe_id: int,
     recipe_update: RecipeUpdate,
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-  """Update a recipe"""
-  recipe = await RecipeService.update_recipe(db, recipe_id, recipe_update)
-  if not recipe:
-    raise HTTPException(status_code=404, detail="Recipe not found")
-  return recipe
+    recipe = await RecipeService.update_recipe(db, recipe_id, recipe_update, current_user.family_id)
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    return recipe
 
 
 @router.delete("/{recipe_id}", status_code=204)
 async def delete_recipe(
     recipe_id: int,
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-  """Delete a recipe"""
-  success = await RecipeService.delete_recipe(db, recipe_id)
-  if not success:
-    raise HTTPException(status_code=404, detail="Recipe not found")
+    success = await RecipeService.delete_recipe(db, recipe_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Recipe not found")
 
 
 @router.post("/{recipe_id}/favorite", response_model=RecipeResponse)
 async def toggle_favorite(
     recipe_id: int,
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-  """Toggle favorite status of a recipe"""
-  recipe = await RecipeService.toggle_favorite(db, recipe_id)
-  if not recipe:
-    raise HTTPException(status_code=404, detail="Recipe not found")
-  return recipe
+    if not current_user.family_id:
+        raise HTTPException(status_code=400, detail="Must be assigned to a family to track favorites")
+    recipe = await RecipeService.toggle_favorite(db, recipe_id, current_user.family_id, current_user.id)
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    return recipe
 
 
 @router.post("/{recipe_id}/cooked", response_model=RecipeResponse)
 async def mark_as_cooked(
     recipe_id: int,
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-  """Mark a recipe as cooked (updates last_cooked timestamp)"""
-  recipe = await RecipeService.mark_as_cooked(db, recipe_id)
-  if not recipe:
-    raise HTTPException(status_code=404, detail="Recipe not found")
-  return recipe
+    if not current_user.family_id:
+        raise HTTPException(status_code=400, detail="Must be assigned to a family to track cooked recipes")
+    recipe = await RecipeService.mark_as_cooked(db, recipe_id, current_user.family_id, current_user.id)
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    return recipe

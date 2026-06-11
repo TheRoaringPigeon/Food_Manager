@@ -35,7 +35,23 @@ DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT
 
 LLM_API = os.getenv("LLM_API", "http://localhost:5002")
 
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change-me-in-production")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRY_MINUTES = int(os.getenv("JWT_EXPIRY_MINUTES", str(60 * 24)))
+
 TAG_METADATA = [
+    {
+        "name": "auth",
+        "description": "Login, signup, and current user"
+    },
+    {
+        "name": "users",
+        "description": "User management (admin only)"
+    },
+    {
+        "name": "families",
+        "description": "Family management (admin only)"
+    },
     {
         "name": "recipes",
         "description": "Operations for managing recipes including CRUD operations, favorites, and filtering"
