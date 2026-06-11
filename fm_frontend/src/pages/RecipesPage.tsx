@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Recipe, CreateRecipePayload, RecipeType } from '../types/recipe'
 import { RECIPE_TYPES } from '../types/recipe'
 import { listRecipes, countRecipes, createRecipe, toggleFavorite, markCooked } from '../api/recipes'
+import RecipeDetailModal from '../components/RecipeDetailModal'
 
 const EMPTY_FORM: CreateRecipePayload = {
   name: '',
@@ -30,6 +31,7 @@ export default function RecipesPage() {
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<CreateRecipePayload>(EMPTY_FORM)
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
   const [ingredientsText, setIngredientsText] = useState('')
   const [instructionsText, setInstructionsText] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -293,7 +295,7 @@ export default function RecipesPage() {
                 {recipes.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">No recipes found.</td></tr>
                 ) : recipes.map(recipe => (
-                  <tr key={recipe.id} className="hover:bg-gray-50">
+                  <tr key={recipe.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedRecipe(recipe)}>
                     <td className="px-4 py-2 text-gray-400">{recipe.id}</td>
                     <td className="px-4 py-2">
                       <span className="font-medium text-gray-900">{recipe.name}</span>
@@ -311,13 +313,13 @@ export default function RecipesPage() {
                     </td>
                     <td className="px-4 py-2 flex gap-2">
                       <button
-                        onClick={() => handleToggleFavorite(recipe.id)}
+                        onClick={e => { e.stopPropagation(); handleToggleFavorite(recipe.id) }}
                         className="text-xs text-yellow-600 hover:underline"
                       >
                         {recipe.is_favorite ? 'Unfavorite' : 'Favorite'}
                       </button>
                       <button
-                        onClick={() => handleMarkCooked(recipe.id)}
+                        onClick={e => { e.stopPropagation(); handleMarkCooked(recipe.id) }}
                         className="text-xs text-indigo-600 hover:underline"
                       >
                         Cooked
@@ -350,6 +352,16 @@ export default function RecipesPage() {
             </div>
           </div>
         </>
+      )}
+      {selectedRecipe && (
+        <RecipeDetailModal
+          recipe={selectedRecipe}
+          onClose={() => setSelectedRecipe(null)}
+          onSaved={updated => {
+            setRecipes(prev => prev.map(r => r.id === updated.id ? updated : r))
+            setSelectedRecipe(null)
+          }}
+        />
       )}
     </div>
   )

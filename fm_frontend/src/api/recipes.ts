@@ -1,5 +1,5 @@
 import { apiFetch } from './client'
-import type { Recipe, CreateRecipePayload } from '../types/recipe'
+import type { Recipe, CreateRecipePayload, UpdateRecipePayload } from '../types/recipe'
 
 export interface RecipeListParams {
   skip?: number
@@ -42,3 +42,9 @@ export const toggleFavorite = (id: number) =>
 
 export const markCooked = (id: number) =>
   apiFetch<Recipe>(`/recipes/${id}/cooked`, { method: 'POST' })
+
+export const updateRecipe = (id: number, payload: UpdateRecipePayload) =>
+  apiFetch<Recipe>(`/recipes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
