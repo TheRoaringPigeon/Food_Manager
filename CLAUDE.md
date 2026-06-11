@@ -73,6 +73,10 @@ pytest tests/test_health.py::test_health_endpoint  # single test
 
 **llm_api** crawls recipe sites via Crawl4AI, stores embeddings in ChromaDB, and answers recommendation queries by combining vector search with Ollama inference. It calls back to fm_api (`FM_API` env var) to sync recipe data.
 
+## Frontend conventions
+
+When creating a new page or component, read the existing pages in `fm_frontend/src/pages/` before writing any markup. Match the Tailwind class patterns, container layout, heading styles, card/panel structure, and theme token usage found there. Do not introduce new patterns when existing ones already cover the case.
+
 ## Key env vars
 
 `fm_api`: `JWT_SECRET_KEY`, `JWT_EXPIRY_MINUTES`, `LLM_API` (→ llm_api base URL), `API_CONTEXT_PATH` (default `/food-manager/api`)
