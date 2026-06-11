@@ -1,8 +1,4 @@
 import logging
-import os
-
-# Disable Gradio analytics threads
-os.environ["GRADIO_ANALYTICS_ENABLED"] = "false"
 
 # Force-disable noisy httpx/httpcore debug logs
 for name in ["httpcore", "httpx"]:
@@ -13,7 +9,6 @@ for name in ["httpcore", "httpx"]:
 
 import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -24,16 +19,12 @@ from routers import (
     recipe_router
 )
 
-import gradio as gr
-from gradio_app import demo
-
 logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
   logger.info(f"Starting {API_INFO['title']} at port \"{API_INFO['port']}\"")
-  # Run: alembic upgrade head
   yield
   logger.info(f"Shutting down {API_INFO['title']}")
 
@@ -49,11 +40,9 @@ app = FastAPI(
 app.include_router(recipe_router)
 app.include_router(ingredient_router)
 
-origins = ["*"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -72,22 +61,6 @@ async def info():
 @app.get(f"{API_CONTEXT_PATH}/health")
 async def read_root():
   return f"{API_INFO['title']} is Healthy and running in '{APP_ENVIRONMENT}' mode."
-
-
-@app.get("/manifest.json", include_in_schema=False)
-async def manifest():
-  return JSONResponse({
-      "name": "Food Manager",
-      "short_name": "FoodManager",
-      "start_url": "/food-manager-app",
-      "display": "standalone",
-      "background_color": "#ffffff",
-      "theme_color": "#ffffff",
-      "icons": []
-  })
-
-if APP_ENVIRONMENT == "development":
-  app = gr.mount_gradio_app(app, demo, path="/food-manager-app")
 
 
 if __name__ == "__main__":
