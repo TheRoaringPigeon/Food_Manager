@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, cast, func
+from sqlalchemy import Text
 from models.recipe import Recipe, RecipeTypeEnum
 from schemas.recipe import RecipeCreate, RecipeUpdate
 from typing import List, Optional
@@ -31,7 +32,8 @@ class RecipeService:
       recipe_type: Optional[RecipeTypeEnum] = None,
       is_favorite: Optional[bool] = None,
       search: Optional[str] = None,
-      ids: Optional[List[int]] = None
+      ids: Optional[List[int]] = None,
+      max_total_time: Optional[int] = None
   ) -> List[Recipe]:
     """Get all recipes with optional filtering"""
     query = select(Recipe)
@@ -52,12 +54,51 @@ class RecipeService:
       query = query.filter(
           (Recipe.name.ilike(search_term)) |
           (Recipe.description.ilike(search_term)) |
-          (Recipe.tags.ilike(search_term))
+          (Recipe.tags.ilike(search_term)) |
+          (cast(Recipe.ingredients, Text).ilike(search_term))
+      )
+
+    if max_total_time is not None:
+      query = query.filter(
+          (func.coalesce(Recipe.prep_time, 0) + func.coalesce(Recipe.cook_time, 0)) <= max_total_time
       )
 
     query = query.order_by(desc(Recipe.created_at)).offset(skip).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
+
+  @staticmethod
+  async def count_recipes(
+      db: AsyncSession,
+      recipe_type: Optional[RecipeTypeEnum] = None,
+      is_favorite: Optional[bool] = None,
+      search: Optional[str] = None,
+      max_total_time: Optional[int] = None
+  ) -> int:
+    query = select(func.count()).select_from(Recipe)
+
+    if recipe_type:
+      query = query.filter(Recipe.recipe_type == recipe_type)
+
+    if is_favorite is not None:
+      query = query.filter(Recipe.is_favorite == is_favorite)
+
+    if search:
+      search_term = f"%{search}%"
+      query = query.filter(
+          (Recipe.name.ilike(search_term)) |
+          (Recipe.description.ilike(search_term)) |
+          (Recipe.tags.ilike(search_term)) |
+          (cast(Recipe.ingredients, Text).ilike(search_term))
+      )
+
+    if max_total_time is not None:
+      query = query.filter(
+          (func.coalesce(Recipe.prep_time, 0) + func.coalesce(Recipe.cook_time, 0)) <= max_total_time
+      )
+
+    result = await db.execute(query)
+    return result.scalar_one()
 
   @staticmethod
   async def update_recipe(

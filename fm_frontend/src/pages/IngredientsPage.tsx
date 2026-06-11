@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Ingredient, CreateIngredientPayload, IngredientType } from '../types/ingredient'
 import { INGREDIENT_TYPES } from '../types/ingredient'
-import { listIngredients, createIngredient, toggleAvailability } from '../api/ingredients'
+import { listIngredients, countIngredients, createIngredient, toggleAvailability } from '../api/ingredients'
 
 const EMPTY_FORM: CreateIngredientPayload = {
   name: '',
@@ -12,6 +12,8 @@ const EMPTY_FORM: CreateIngredientPayload = {
   is_available: true,
 }
 
+const PAGE_SIZES = [10, 20, 50]
+
 export default function IngredientsPage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,9 +22,39 @@ export default function IngredientsPage() {
   const [form, setForm] = useState<CreateIngredientPayload>(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
 
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+  const [availFilter, setAvailFilter] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [total, setTotal] = useState(0)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 350)
+    return () => clearTimeout(t)
+  }, [search])
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, typeFilter, availFilter, pageSize])
+
   const load = async () => {
+    setLoading(true)
     try {
-      setIngredients(await listIngredients())
+      const params = {
+        skip: (page - 1) * pageSize,
+        limit: pageSize,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(typeFilter ? { ingredient_type: typeFilter } : {}),
+        ...(availFilter !== '' ? { is_available: availFilter === 'true' } : {}),
+      }
+      const [data, countData] = await Promise.all([
+        listIngredients(params),
+        countIngredients(params),
+      ])
+      setIngredients(data)
+      setTotal(countData.total)
     } catch (e) {
       setError(String(e))
     } finally {
@@ -30,7 +62,7 @@ export default function IngredientsPage() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [page, pageSize, debouncedSearch, typeFilter, availFilter])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,6 +87,8 @@ export default function IngredientsPage() {
       setError(String(e))
     }
   }
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return (
     <div>
@@ -141,49 +175,108 @@ export default function IngredientsPage() {
         </form>
       )}
 
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <input
+          type="text"
+          placeholder="Search ingredients..."
+          className="border border-gray-300 rounded px-3 py-1.5 text-sm w-52"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <select
+          className="border border-gray-300 rounded px-3 py-1.5 text-sm"
+          value={typeFilter}
+          onChange={e => setTypeFilter(e.target.value)}
+        >
+          <option value="">All types</option>
+          {INGREDIENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select
+          className="border border-gray-300 rounded px-3 py-1.5 text-sm"
+          value={availFilter}
+          onChange={e => setAvailFilter(e.target.value)}
+        >
+          <option value="">All</option>
+          <option value="true">Available</option>
+          <option value="false">Out of stock</option>
+        </select>
+        <select
+          className="border border-gray-300 rounded px-3 py-1.5 text-sm"
+          value={pageSize}
+          onChange={e => setPageSize(Number(e.target.value))}
+        >
+          {PAGE_SIZES.map(s => <option key={s} value={s}>{s} per page</option>)}
+        </select>
+        <span className="ml-auto text-xs text-gray-500">{total} result{total !== 1 ? 's' : ''}</span>
+      </div>
+
       {loading ? (
         <p className="text-gray-500 text-sm">Loading...</p>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                {['ID', 'Name', 'Type', 'Qty / Unit', 'Status', ''].map(h => (
-                  <th key={h} className="text-left px-4 py-2 text-xs font-medium text-gray-600">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {ingredients.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">No ingredients yet.</td></tr>
-              ) : ingredients.map(ing => (
-                <tr key={ing.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-gray-400">{ing.id}</td>
-                  <td className="px-4 py-2 font-medium text-gray-900">{ing.name}</td>
-                  <td className="px-4 py-2 text-gray-600 capitalize">{ing.ingredient_type}</td>
-                  <td className="px-4 py-2 text-gray-600">
-                    {ing.quantity != null ? `${ing.quantity} ${ing.unit}` : ing.unit || '—'}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      ing.is_available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
-                    }`}>
-                      {ing.is_available ? 'Available' : 'Out of stock'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    <button
-                      onClick={() => handleToggle(ing.id)}
-                      className="text-xs text-indigo-600 hover:underline"
-                    >
-                      Toggle
-                    </button>
-                  </td>
+        <>
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  {['ID', 'Name', 'Type', 'Qty / Unit', 'Status', ''].map(h => (
+                    <th key={h} className="text-left px-4 py-2 text-xs font-medium text-gray-600">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {ingredients.length === 0 ? (
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">No ingredients found.</td></tr>
+                ) : ingredients.map(ing => (
+                  <tr key={ing.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 text-gray-400">{ing.id}</td>
+                    <td className="px-4 py-2 font-medium text-gray-900">{ing.name}</td>
+                    <td className="px-4 py-2 text-gray-600 capitalize">{ing.ingredient_type}</td>
+                    <td className="px-4 py-2 text-gray-600">
+                      {ing.quantity != null ? `${ing.quantity} ${ing.unit}` : ing.unit || '—'}
+                    </td>
+                    <td className="px-4 py-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        ing.is_available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                      }`}>
+                        {ing.is_available ? 'Available' : 'Out of stock'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2">
+                      <button
+                        onClick={() => handleToggle(ing.id)}
+                        className="text-xs text-indigo-600 hover:underline"
+                      >
+                        Toggle
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between mt-3">
+            <span className="text-xs text-gray-500">Page {page} of {totalPages}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => p - 1)}
+                disabled={page <= 1}
+                className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={page >= totalPages}
+                className="px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

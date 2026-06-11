@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from database import get_db
-from schemas.recipe import RecipeCreate, RecipeUpdate, RecipeResponse
+from schemas.recipe import RecipeCreate, RecipeUpdate, RecipeResponse, RecipeCount
 from services.recipe_service import RecipeService
 from models.recipe import RecipeTypeEnum
 from constants import API_CONTEXT_PATH
@@ -30,6 +30,7 @@ async def get_recipes(
     is_favorite: Optional[bool] = None,
     search: Optional[str] = None,
     ids: Optional[str] = Query(None, description="Comma-separated recipe IDs"),
+    max_total_time: Optional[int] = Query(None, ge=1),
     db: AsyncSession = Depends(get_db)
 ):
   """Get all recipes with optional filters"""
@@ -41,7 +42,8 @@ async def get_recipes(
       recipe_type=recipe_type,
       is_favorite=is_favorite,
       search=search,
-      ids=parsed_ids
+      ids=parsed_ids,
+      max_total_time=max_total_time
   )
 
 
@@ -52,6 +54,25 @@ async def get_recently_cooked(
 ):
   """Get recently cooked recipes"""
   return await RecipeService.get_recently_cooked(db, limit)
+
+
+@router.get("/count", response_model=RecipeCount)
+async def count_recipes(
+    recipe_type: Optional[RecipeTypeEnum] = None,
+    is_favorite: Optional[bool] = None,
+    search: Optional[str] = None,
+    max_total_time: Optional[int] = Query(None, ge=1),
+    db: AsyncSession = Depends(get_db)
+):
+  """Count recipes with optional filters"""
+  total = await RecipeService.count_recipes(
+      db,
+      recipe_type=recipe_type,
+      is_favorite=is_favorite,
+      search=search,
+      max_total_time=max_total_time
+  )
+  return RecipeCount(total=total)
 
 
 @router.get("/{recipe_id}", response_model=RecipeResponse)
