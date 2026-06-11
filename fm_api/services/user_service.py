@@ -28,8 +28,11 @@ class UserService:
         return user
 
     @staticmethod
-    async def get_users(db: AsyncSession) -> List[User]:
-        result = await db.execute(select(User).order_by(User.username))
+    async def get_users(db: AsyncSession, include_inactive: bool = False) -> List[User]:
+        q = select(User).order_by(User.username)
+        if not include_inactive:
+            q = q.filter(User.is_active == True)
+        result = await db.execute(q)
         return result.scalars().all()
 
     @staticmethod
@@ -61,9 +64,39 @@ class UserService:
         user = result.scalar_one_or_none()
         if not user:
             return False
-        await db.delete(user)
+        user.is_active = False
         await db.commit()
         return True
+
+    @staticmethod
+    async def update_user(
+        db: AsyncSession,
+        user_id: int,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> Optional[User]:
+        result = await db.execute(select(User).filter(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            return None
+        if username is not None:
+            user.username = username
+        if password is not None:
+            user.hashed_password = hash_password(password)
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    @staticmethod
+    async def activate_user(db: AsyncSession, user_id: int) -> Optional[User]:
+        result = await db.execute(select(User).filter(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            return None
+        user.is_active = True
+        await db.commit()
+        await db.refresh(user)
+        return user
 
     @staticmethod
     async def change_role(

@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from database import get_db
-from schemas.user import UserResponse, UserCreate, AssignFamilyRequest, ChangeRoleRequest
+from schemas.user import UserResponse, UserCreate, AssignFamilyRequest, ChangeRoleRequest, UpdateUserPayload
 from services.user_service import UserService
 from services.family_service import FamilyService
 from dependencies.auth import get_current_user, require_admin
@@ -18,10 +18,11 @@ router = APIRouter(
 
 @router.get("", response_model=List[UserResponse])
 async def get_users(
+    include_inactive: bool = Query(False),
     _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    return await UserService.get_users(db)
+    return await UserService.get_users(db, include_inactive=include_inactive)
 
 
 @router.post("", response_model=UserResponse, status_code=201)
@@ -50,6 +51,25 @@ async def get_user(
     if current_user.role.value != "admin" and current_user.id != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     user = await UserService.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.patch("/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: int,
+    payload: UpdateUserPayload,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.id != user_id and current_user.role.value != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if payload.username:
+        existing = await UserService.get_user_by_username(db, payload.username)
+        if existing and existing.id != user_id:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
+    user = await UserService.update_user(db, user_id, username=payload.username, password=payload.password)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -84,6 +104,18 @@ async def delete_user(
     success = await UserService.delete_user(db, user_id)
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
+
+
+@router.patch("/{user_id}/activate", response_model=UserResponse)
+async def activate_user(
+    user_id: int,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await UserService.activate_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 
 @router.patch("/{user_id}/role", response_model=UserResponse)

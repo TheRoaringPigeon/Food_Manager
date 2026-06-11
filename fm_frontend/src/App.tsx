@@ -8,6 +8,7 @@ import IngredientsPage from './pages/IngredientsPage'
 import RecipesPage from './pages/RecipesPage'
 import RecommendationsPage from './pages/RecommendationsPage'
 import AdminPage from './pages/AdminPage'
+import ProfilePage from './pages/ProfilePage'
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
               <Route path="ingredients" element={<IngredientsPage />} />
               <Route path="recipes" element={<RecipesPage />} />
               <Route path="recommendations" element={<RecommendationsPage />} />
+              <Route path="profile" element={<ProfilePage />} />
             </Route>
           </Route>
 
