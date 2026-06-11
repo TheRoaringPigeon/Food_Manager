@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import type { Ingredient, CreateIngredientPayload, IngredientType } from '../types/ingredient'
-import { INGREDIENT_TYPES } from '../types/ingredient'
+import { INGREDIENT_TYPES, UNIT_OPTIONS } from '../types/ingredient'
 import { listIngredients, countIngredients, createIngredient, toggleAvailability } from '../api/ingredients'
+import IngredientDetailModal from '../components/IngredientDetailModal'
 
 const EMPTY_FORM: CreateIngredientPayload = {
   name: '',
   description: '',
   ingredient_type: 'produce',
   quantity: null,
-  unit: '',
+  unit: null,
   is_available: true,
 }
 
@@ -21,6 +22,7 @@ export default function IngredientsPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<CreateIngredientPayload>(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
+  const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null)
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -149,12 +151,14 @@ export default function IngredientsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium foreground-content mb-1">Unit</label>
-              <input
+              <select
                 className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                placeholder="kg, cup, tsp..."
-                value={form.unit}
-                onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
-              />
+                value={form.unit ?? ''}
+                onChange={e => setForm(f => ({ ...f, unit: e.target.value as CreateIngredientPayload['unit'] || null }))}
+              >
+                <option value="">— none —</option>
+                {UNIT_OPTIONS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
+              </select>
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -228,7 +232,7 @@ export default function IngredientsPage() {
                 {ingredients.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-6 text-center foreground-dim">No ingredients found.</td></tr>
                 ) : ingredients.map(ing => (
-                  <tr key={ing.id} className="hover:background-surface-raised">
+                  <tr key={ing.id} className="hover:background-surface-raised cursor-pointer" onClick={() => setSelectedIngredient(ing)}>
                     <td className="px-4 py-2 foreground-dim">{ing.id}</td>
                     <td className="px-4 py-2 font-medium foreground-content">{ing.name}</td>
                     <td className="px-4 py-2 foreground-subtle capitalize">{ing.ingredient_type}</td>
@@ -244,7 +248,7 @@ export default function IngredientsPage() {
                     </td>
                     <td className="px-4 py-2">
                       <button
-                        onClick={() => handleToggle(ing.id)}
+                        onClick={e => { e.stopPropagation(); handleToggle(ing.id) }}
                         className="text-xs foreground-primary hover:underline"
                       >
                         Toggle
@@ -277,6 +281,16 @@ export default function IngredientsPage() {
             </div>
           </div>
         </>
+      )}
+      {selectedIngredient && (
+        <IngredientDetailModal
+          ingredient={selectedIngredient}
+          onClose={() => setSelectedIngredient(null)}
+          onSaved={updated => {
+            setIngredients(prev => prev.map(i => i.id === updated.id ? updated : i))
+            setSelectedIngredient(null)
+          }}
+        />
       )}
     </div>
   )

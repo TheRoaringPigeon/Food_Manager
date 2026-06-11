@@ -15,6 +15,38 @@ class IngredientTypeEnum(str, enum.Enum):
     OTHER = "other"
 
 
+class UnitEnum(str, enum.Enum):
+    # Volume — imperial
+    TSP = "tsp"
+    TBSP = "tbsp"
+    FL_OZ = "fl_oz"
+    CUP = "cup"
+    PINT = "pint"
+    QUART = "quart"
+    GALLON = "gallon"
+    # Volume — metric
+    ML = "ml"
+    LITER = "liter"
+    # Weight — imperial
+    OZ = "oz"
+    LB = "lb"
+    # Weight — metric
+    G = "g"
+    KG = "kg"
+    # Count
+    WHOLE = "whole"
+    DOZEN = "dozen"
+    # Package / specialty
+    PINCH = "pinch"
+    DASH = "dash"
+    CLOVE = "clove"
+    SLICE = "slice"
+    BUNCH = "bunch"
+    CAN = "can"
+    PACKAGE = "package"
+    BAG = "bag"
+
+
 class Ingredient(Base):
     __tablename__ = "ingredients"
 
@@ -23,7 +55,7 @@ class Ingredient(Base):
     description = Column(Text, nullable=True)
     ingredient_type = Column(Enum(IngredientTypeEnum), nullable=False, index=True)
     quantity = Column(Float, nullable=True)
-    unit = Column(String(50), nullable=True)
+    unit = Column(Enum(UnitEnum, name="unitenum", values_callable=lambda obj: [e.value for e in obj]), nullable=True)
     is_available = Column(Boolean, default=True, index=True)
     tags = Column(Text, nullable=True)
     image_url = Column(String(500), nullable=True)

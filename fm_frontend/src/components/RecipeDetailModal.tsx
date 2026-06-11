@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Recipe, RecipeType, UpdateRecipePayload } from '../types/recipe'
+import type { Recipe, RecipeType, RecipeIngredient, UpdateRecipePayload } from '../types/recipe'
 import { RECIPE_TYPES } from '../types/recipe'
 import { updateRecipe } from '../api/recipes'
 
@@ -8,6 +8,8 @@ interface Props {
   onClose: () => void
   onSaved: (updated: Recipe) => void
 }
+
+const BLANK_ING: RecipeIngredient = { name: '', quantity: null, unit: null }
 
 export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
   const [form, setForm] = useState<UpdateRecipePayload>({
@@ -18,10 +20,21 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
     servings: recipe.servings,
     recipe_type: recipe.recipe_type,
   })
-  const [ingredientsText, setIngredientsText] = useState(recipe.ingredients.join(', '))
+  const [ingredientRows, setIngredientRows] = useState<RecipeIngredient[]>(
+    recipe.ingredients.length > 0 ? recipe.ingredients : [{ ...BLANK_ING }]
+  )
   const [instructionsText, setInstructionsText] = useState(recipe.instructions.join('\n'))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const updateRow = (i: number, patch: Partial<RecipeIngredient>) =>
+    setIngredientRows(rows => rows.map((r, idx) => idx === i ? { ...r, ...patch } : r))
+
+  const removeRow = (i: number) =>
+    setIngredientRows(rows => rows.filter((_, idx) => idx !== i))
+
+  const addRow = () =>
+    setIngredientRows(rows => [...rows, { ...BLANK_ING }])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,7 +43,7 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
     try {
       const payload: UpdateRecipePayload = {
         ...form,
-        ingredients: ingredientsText.split(',').map(s => s.trim()).filter(Boolean),
+        ingredients: ingredientRows.filter(r => r.name.trim()),
         instructions: instructionsText.split('\n').map(s => s.trim()).filter(Boolean),
       }
       const updated = await updateRecipe(recipe.id, payload)
@@ -95,15 +108,52 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               />
             </div>
+
             <div className="col-span-2">
-              <label className="block text-xs font-medium foreground-content mb-1">Ingredients (comma-separated)</label>
-              <textarea
-                rows={3}
-                className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                value={ingredientsText}
-                onChange={e => setIngredientsText(e.target.value)}
-              />
+              <label className="block text-xs font-medium foreground-content mb-1">Ingredients</label>
+              <div className="space-y-1.5">
+                {ingredientRows.map((row, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <input
+                      className="flex-1 border border-line rounded px-3 py-1.5 text-sm"
+                      placeholder="Name"
+                      value={row.name}
+                      onChange={e => updateRow(i, { name: e.target.value })}
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      className="w-20 border border-line rounded px-3 py-1.5 text-sm"
+                      placeholder="Qty"
+                      value={row.quantity ?? ''}
+                      onChange={e => updateRow(i, { quantity: e.target.value ? Number(e.target.value) : null })}
+                    />
+                    <input
+                      className="w-20 border border-line rounded px-3 py-1.5 text-sm"
+                      placeholder="Unit"
+                      value={row.unit ?? ''}
+                      onChange={e => updateRow(i, { unit: e.target.value || null })}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeRow(i)}
+                      className="foreground-dim hover:foreground-content text-lg leading-none px-1"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addRow}
+                  className="text-xs foreground-primary hover:underline"
+                >
+                  + Add ingredient
+                </button>
+              </div>
             </div>
+
             <div className="col-span-2">
               <label className="block text-xs font-medium foreground-content mb-1">Instructions (one per line)</label>
               <textarea

@@ -4,11 +4,17 @@ export const RECIPE_TYPES: RecipeType[] = [
   'breakfast', 'lunch', 'dinner', 'snack', 'dessert', 'drink', 'other',
 ]
 
+export interface RecipeIngredient {
+  name: string
+  quantity?: number | null
+  unit?: string | null
+}
+
 export interface Recipe {
   id: number
   name: string
   description: string
-  ingredients: string[]
+  ingredients: RecipeIngredient[]
   instructions: string[]
   prep_time: number | null
   cook_time: number | null
@@ -23,7 +29,7 @@ export interface Recipe {
 export interface CreateRecipePayload {
   name: string
   description: string
-  ingredients: string[]
+  ingredients: RecipeIngredient[]
   instructions: string[]
   prep_time: number | null
   cook_time: number | null
@@ -34,7 +40,7 @@ export interface CreateRecipePayload {
 export interface UpdateRecipePayload {
   name?: string
   description?: string
-  ingredients?: string[]
+  ingredients?: RecipeIngredient[]
   instructions?: string[]
   prep_time?: number | null
   cook_time?: number | null

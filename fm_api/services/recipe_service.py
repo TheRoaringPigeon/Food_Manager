@@ -4,6 +4,7 @@ from sqlalchemy import Text
 from sqlalchemy.orm import aliased
 from models.recipe import Recipe, RecipeTypeEnum
 from models.family_recipe_status import FamilyRecipeStatus
+from models.ingredient import Ingredient
 from schemas.recipe import RecipeCreate, RecipeUpdate
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -260,7 +261,8 @@ class RecipeService:
         user_id: int,
     ) -> Optional[Dict[str, Any]]:
         recipe_result = await db.execute(select(Recipe).filter(Recipe.id == recipe_id))
-        if not recipe_result.scalar_one_or_none():
+        recipe_obj = recipe_result.scalar_one_or_none()
+        if not recipe_obj:
             return None
 
         existing = await db.execute(
@@ -282,6 +284,25 @@ class RecipeService:
                 last_cooked=datetime.utcnow(),
             )
             db.add(status_row)
+
+        if recipe_obj.ingredients:
+            for ing in recipe_obj.ingredients:
+                if isinstance(ing, str):
+                    name, qty = ing, None
+                elif isinstance(ing, dict):
+                    name, qty = ing.get("name"), ing.get("quantity")
+                else:
+                    name, qty = None, None
+                if not name or not qty:
+                    continue
+                inv_result = await db.execute(
+                    select(Ingredient).filter(func.lower(Ingredient.name) == name.lower())
+                )
+                inv = inv_result.scalar_one_or_none()
+                if inv and inv.quantity is not None:
+                    inv.quantity = max(0.0, inv.quantity - qty)
+                    if inv.quantity == 0:
+                        inv.is_available = False
 
         await db.commit()
         return await _get_recipe_with_status(db, recipe_id, family_id)

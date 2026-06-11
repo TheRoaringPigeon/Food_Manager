@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
-from models.ingredient import IngredientTypeEnum
+from models.ingredient import IngredientTypeEnum, UnitEnum
 
 
 class IngredientBase(BaseModel):
@@ -9,7 +9,7 @@ class IngredientBase(BaseModel):
   description: Optional[str] = None
   ingredient_type: IngredientTypeEnum
   quantity: Optional[float] = Field(None, ge=0)
-  unit: Optional[str] = Field(None, max_length=50)
+  unit: Optional[UnitEnum] = None
   tags: Optional[str] = None
   image_url: Optional[str] = None
   is_available: Optional[bool] = True
@@ -24,7 +24,7 @@ class IngredientUpdate(BaseModel):
   description: Optional[str] = None
   ingredient_type: Optional[IngredientTypeEnum] = None
   quantity: Optional[float] = Field(None, ge=0)
-  unit: Optional[str] = Field(None, max_length=50)
+  unit: Optional[UnitEnum] = None
   tags: Optional[str] = None
   image_url: Optional[str] = None
   is_available: Optional[bool] = None

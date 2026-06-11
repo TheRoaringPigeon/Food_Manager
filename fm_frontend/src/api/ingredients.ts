@@ -1,5 +1,5 @@
 import { apiFetch } from './client'
-import type { Ingredient, CreateIngredientPayload } from '../types/ingredient'
+import type { Ingredient, CreateIngredientPayload, UpdateIngredientPayload } from '../types/ingredient'
 
 export interface IngredientListParams {
   skip?: number
@@ -35,3 +35,9 @@ export const createIngredient = (payload: CreateIngredientPayload) =>
 
 export const toggleAvailability = (id: number) =>
   apiFetch<Ingredient>(`/ingredients/${id}/availability`, { method: 'POST' })
+
+export const updateIngredient = (id: number, payload: UpdateIngredientPayload) =>
+  apiFetch<Ingredient>(`/ingredients/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
