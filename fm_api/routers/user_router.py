@@ -1,0 +1,99 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List
+
+from database import get_db
+from schemas.user import UserResponse, UserCreate, AssignFamilyRequest, ChangeRoleRequest
+from services.user_service import UserService
+from services.family_service import FamilyService
+from dependencies.auth import get_current_user, require_admin
+from models.user import User
+from constants import API_CONTEXT_PATH
+
+router = APIRouter(
+    prefix=f"{API_CONTEXT_PATH}/users",
+    tags=["users"],
+)
+
+
+@router.get("", response_model=List[UserResponse])
+async def get_users(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await UserService.get_users(db)
+
+
+@router.post("", response_model=UserResponse, status_code=201)
+async def create_user(
+    payload: UserCreate,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    existing = await UserService.get_user_by_username(db, payload.username)
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
+    return await UserService.create_user(
+        db,
+        username=payload.username,
+        password=payload.password,
+        role=payload.role,
+    )
+
+
+@router.get("/{user_id}", response_model=UserResponse)
+async def get_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role.value != "admin" and current_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    user = await UserService.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.patch("/{user_id}/family", response_model=UserResponse)
+async def assign_family(
+    user_id: int,
+    payload: AssignFamilyRequest,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if payload.family_id is not None:
+        family = await FamilyService.get_family_by_id(db, payload.family_id)
+        if not family:
+            raise HTTPException(status_code=404, detail="Family not found")
+
+    user = await UserService.assign_family(db, user_id, payload.family_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.delete("/{user_id}", status_code=204)
+async def delete_user(
+    user_id: int,
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.id == user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
+    success = await UserService.delete_user(db, user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+
+
+@router.patch("/{user_id}/role", response_model=UserResponse)
+async def change_role(
+    user_id: int,
+    payload: ChangeRoleRequest,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await UserService.change_role(db, user_id, payload.role)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user

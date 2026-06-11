@@ -17,7 +17,6 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
     cook_time: recipe.cook_time,
     servings: recipe.servings,
     recipe_type: recipe.recipe_type,
-    is_favorite: recipe.is_favorite,
   })
   const [ingredientsText, setIngredientsText] = useState(recipe.ingredients.join(', '))
   const [instructionsText, setInstructionsText] = useState(recipe.instructions.join('\n'))
@@ -142,15 +141,6 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
               />
             </div>
           </div>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.is_favorite ?? false}
-              onChange={e => setForm(f => ({ ...f, is_favorite: e.target.checked }))}
-            />
-            Favorite
-          </label>
 
           <div className="text-xs text-gray-400 space-y-0.5 pt-1">
             <div>ID: {recipe.id}</div>

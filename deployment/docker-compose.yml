@@ -44,6 +44,7 @@ services:
       - DB_HOST=postgres
       - DB_NAME=fm_db
       - LLM_API=http://llm_api:5002
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
     env_file:
       - .env
     depends_on:
