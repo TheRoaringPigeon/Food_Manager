@@ -5,6 +5,7 @@ export interface AuthUser {
   username: string
   role: UserRole
   family_id: number | null
+  theme?: string
 }
 
 export interface TokenResponse {
@@ -43,4 +44,5 @@ export interface UserRecord {
 export interface UpdateUserPayload {
   username?: string
   password?: string
+  theme?: string
 }

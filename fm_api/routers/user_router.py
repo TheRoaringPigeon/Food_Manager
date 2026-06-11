@@ -69,7 +69,7 @@ async def update_user(
         existing = await UserService.get_user_by_username(db, payload.username)
         if existing and existing.id != user_id:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
-    user = await UserService.update_user(db, user_id, username=payload.username, password=payload.password)
+    user = await UserService.update_user(db, user_id, username=payload.username, password=payload.password, theme=payload.theme)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

@@ -10,6 +10,7 @@ class UserResponse(BaseModel):
     role: UserRoleEnum
     family_id: Optional[int] = None
     is_active: bool
+    theme: str = 'indigo'
     created_at: datetime
     updated_at: datetime
 
@@ -50,3 +51,4 @@ class ChangeRoleRequest(BaseModel):
 class UpdateUserPayload(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=100)
     password: Optional[str] = Field(None, min_length=6)
+    theme: Optional[str] = Field(None, max_length=50)
