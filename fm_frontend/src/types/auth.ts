@@ -19,11 +19,28 @@ export interface Family {
   created_at: string
 }
 
+export interface FamilyMember {
+  id: number
+  username: string
+  role: UserRole
+  is_active: boolean
+}
+
+export interface FamilyWithMembers extends Family {
+  users: FamilyMember[]
+}
+
 export interface UserRecord {
   id: number
   username: string
   role: UserRole
   family_id: number | null
+  is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface UpdateUserPayload {
+  username?: string
+  password?: string
 }

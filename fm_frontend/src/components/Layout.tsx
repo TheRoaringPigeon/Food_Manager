@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Link, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Layout() {
@@ -40,7 +40,9 @@ export default function Layout() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3">
-            <span className="text-sm text-gray-500">{user?.username}</span>
+            <Link to="/profile" className="text-sm text-gray-500 hover:text-indigo-600 transition-colors">
+              {user?.username}
+            </Link>
             <button
               onClick={handleLogout}
               className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"

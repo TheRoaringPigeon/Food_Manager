@@ -9,6 +9,7 @@ class UserResponse(BaseModel):
     username: str
     role: UserRoleEnum
     family_id: Optional[int] = None
+    is_active: bool
     created_at: datetime
     updated_at: datetime
 
@@ -44,3 +45,8 @@ class AssignFamilyRequest(BaseModel):
 
 class ChangeRoleRequest(BaseModel):
     role: UserRoleEnum
+
+
+class UpdateUserPayload(BaseModel):
+    username: Optional[str] = Field(None, min_length=3, max_length=100)
+    password: Optional[str] = Field(None, min_length=6)
