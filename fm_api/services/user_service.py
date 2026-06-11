@@ -74,6 +74,7 @@ class UserService:
         user_id: int,
         username: Optional[str] = None,
         password: Optional[str] = None,
+        theme: Optional[str] = None,
     ) -> Optional[User]:
         result = await db.execute(select(User).filter(User.id == user_id))
         user = result.scalar_one_or_none()
@@ -83,6 +84,8 @@ class UserService:
             user.username = username
         if password is not None:
             user.hashed_password = hash_password(password)
+        if theme is not None:
+            user.theme = theme
         await db.commit()
         await db.refresh(user)
         return user

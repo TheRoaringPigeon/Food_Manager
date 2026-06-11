@@ -19,6 +19,7 @@ class User(Base):
     role = Column(Enum(UserRoleEnum, values_callable=lambda x: [e.value for e in x]), nullable=False, default=UserRoleEnum.STANDARD)
     family_id = Column(Integer, ForeignKey("families.id", ondelete="SET NULL"), nullable=True, index=True)
     is_active = Column(Boolean, nullable=False, default=True)
+    theme = Column(String(50), nullable=False, default='indigo')
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

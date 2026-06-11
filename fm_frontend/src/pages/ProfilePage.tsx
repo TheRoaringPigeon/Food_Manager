@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { updateUser } from '../api/admin'
-import { useTheme, THEMES } from '../context/ThemeContext'
+import { useTheme, type ThemeId } from '../context/ThemeContext'
 
 export default function ProfilePage() {
   const { user, updateUser: updateAuthUser } = useAuth()
@@ -44,6 +44,16 @@ export default function ProfilePage() {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleThemeChange(id: ThemeId) {
+    setTheme(id)
+    try {
+      await updateUser(user!.id, { theme: id })
+      updateAuthUser({ theme: id })
+    } catch {
+      // visual change is applied; server persistence failed silently
     }
   }
 
@@ -107,7 +117,7 @@ export default function ProfilePage() {
           {themes.map(t => (
             <button
               key={t.id}
-              onClick={() => setTheme(t.id)}
+              onClick={() => handleThemeChange(t.id)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
                 theme === t.id
                   ? 'border-primary background-primary-soft foreground-primary-dim'
