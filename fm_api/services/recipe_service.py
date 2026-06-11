@@ -30,10 +30,16 @@ class RecipeService:
       limit: int = 100,
       recipe_type: Optional[RecipeTypeEnum] = None,
       is_favorite: Optional[bool] = None,
-      search: Optional[str] = None
+      search: Optional[str] = None,
+      ids: Optional[List[int]] = None
   ) -> List[Recipe]:
     """Get all recipes with optional filtering"""
     query = select(Recipe)
+
+    if ids is not None:
+      query = query.filter(Recipe.id.in_(ids))
+      result = await db.execute(query)
+      return result.scalars().all()
 
     if recipe_type:
       query = query.filter(Recipe.recipe_type == recipe_type)

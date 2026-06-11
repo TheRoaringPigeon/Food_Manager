@@ -46,6 +46,10 @@ TAG_METADATA = [
     {
       "name": "recipes",
       "description": "crawled recipes stored in vector DB."
+    },
+    {
+      "name": "recommendations",
+      "description": "AI-powered recipe recommendations based on craving and pantry."
     }
 ]
 

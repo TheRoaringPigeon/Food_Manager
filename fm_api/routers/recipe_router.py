@@ -29,16 +29,19 @@ async def get_recipes(
     recipe_type: Optional[RecipeTypeEnum] = None,
     is_favorite: Optional[bool] = None,
     search: Optional[str] = None,
+    ids: Optional[str] = Query(None, description="Comma-separated recipe IDs"),
     db: AsyncSession = Depends(get_db)
 ):
   """Get all recipes with optional filters"""
+  parsed_ids = [int(i) for i in ids.split(",") if i.strip()] if ids else None
   return await RecipeService.get_recipes(
       db,
       skip=skip,
       limit=limit,
       recipe_type=recipe_type,
       is_favorite=is_favorite,
-      search=search
+      search=search,
+      ids=parsed_ids
   )
 
 

@@ -31,7 +31,20 @@ class RecipeParser:
       return {"url": url}
 
     try:
-      data = json.loads(json_ld_tag.string)[0]
+      raw = json.loads(json_ld_tag.string)
+
+      # Handle both formats:
+      # 1. Array: [{...recipe...}]  (e.g. SimplyRecipes)
+      # 2. @graph object: {"@graph": [{...}, {...Recipe...}]}  (e.g. Budget Bytes)
+      if isinstance(raw, list):
+        data = raw[0]
+      elif isinstance(raw, dict) and "@graph" in raw:
+        data = next((item for item in raw["@graph"] if item.get("@type") == "Recipe"), None)
+        if not data:
+          logger.warning(f"No Recipe found in @graph for {url}")
+          return {"url": url}
+      else:
+        data = raw
 
       instructions = []
       for step in data.get("recipeInstructions", []):

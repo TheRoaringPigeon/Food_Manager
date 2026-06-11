@@ -18,10 +18,10 @@ from services.recipe_persistence import RecipePersistence
 logger = get_logger(__name__)
 
 # === SETTINGS ===
-SITEMAP_URL = "https://www.simplyrecipes.com/sitemap_1.xml"
+SITEMAP_URL = "https://www.budgetbytes.com/post-sitemap.xml"
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-MAX_CONCURRENT = 100
+MAX_CONCURRENT = 3
 
 
 class CrawlerService:
@@ -98,7 +98,7 @@ class CrawlerService:
     try:
       all_recipe_urls = await SitemapService.get_recipe_urls_from_sitemap(
           SITEMAP_URL,
-          url_filter="/recipes/"
+          url_filter="budgetbytes.com"
       )
 
       recipe_urls = await RecipePersistence.check_recipe_urls_against_db(all_recipe_urls)
@@ -132,9 +132,14 @@ class CrawlerService:
     Args:
         recipe_urls: List of URLs to process
     """
+    headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.5",
+    }
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(headers=headers) as session:
       tasks = [
           self._process_url(session, url, semaphore)
           for url in recipe_urls
@@ -144,7 +149,11 @@ class CrawlerService:
 
       for i, result in enumerate(results):
         if isinstance(result, Exception):
-          logger.error(f"Exception processing {recipe_urls[i]}: {result}")
+          logger.error(
+              f"Exception processing {recipe_urls[i]}: "
+              f"[{type(result).__name__}] {result}",
+              exc_info=result
+          )
           self.app.state.crawler.fail_count += 1
 
   async def _process_url(self, session: aiohttp.ClientSession, url: str, semaphore: asyncio.Semaphore):

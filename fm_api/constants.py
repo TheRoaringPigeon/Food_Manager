@@ -33,6 +33,8 @@ DB_PORT = os.getenv('DB_PORT', '5432')
 
 DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
+LLM_API = os.getenv("LLM_API", "http://localhost:5002")
+
 TAG_METADATA = [
     {
         "name": "recipes",
