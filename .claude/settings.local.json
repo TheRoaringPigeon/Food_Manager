@@ -6,7 +6,8 @@
       "Bash(curl -s -X POST http://localhost:5002/food-manager/llm/api/crawler/start | python -m json.tool 2>&1)",
       "Bash(docker exec postgres psql -U postgres -d fm_db -c \"SELECT COUNT\\(*\\) FROM recipes;\" 2>&1)",
       "Bash(sleep 5 && curl -s -X POST http://localhost:5002/food-manager/llm/api/crawler/start | python -m json.tool 2>&1)",
-      "Bash(sleep 60 && curl -s http://localhost:5002/food-manager/llm/api/crawler/status | python -m json.tool 2>&1)"
+      "Bash(sleep 60 && curl -s http://localhost:5002/food-manager/llm/api/crawler/status | python -m json.tool 2>&1)",
+      "Bash(cd \"C:/Users/Drewfuss/Documents/Code/RP/Food_Manager/fm_frontend\" && npm install)"
     ]
   }
 }

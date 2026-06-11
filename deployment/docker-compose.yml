@@ -55,6 +55,25 @@ services:
       - fm-net
     restart: unless-stopped
 
+  fm_frontend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.fm-frontend
+    container_name: fm_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../fm_frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://fm_api:5001
+      - VITE_LLM_API_URL=http://llm_api:5002
+    depends_on:
+      - fm_api
+    networks:
+      - fm-net
+    restart: unless-stopped
+
   postgres:
     image: postgres:16
     container_name: postgres
