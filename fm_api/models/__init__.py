@@ -1,3 +1,4 @@
+from database import Base
 from .ingredient import Ingredient
 from .recipe import Recipe
 from .family import Family

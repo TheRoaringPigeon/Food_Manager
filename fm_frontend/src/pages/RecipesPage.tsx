@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { Recipe, CreateRecipePayload, RecipeType } from '../types/recipe'
+import type { Recipe, CreateRecipePayload, RecipeType, RecipeIngredient } from '../types/recipe'
 import { RECIPE_TYPES } from '../types/recipe'
 import { listRecipes, countRecipes, createRecipe, toggleFavorite, markCooked } from '../api/recipes'
 import RecipeDetailModal from '../components/RecipeDetailModal'
+
+const BLANK_ING: RecipeIngredient = { name: '', quantity: null, unit: null }
 
 const EMPTY_FORM: CreateRecipePayload = {
   name: '',
@@ -31,7 +33,7 @@ export default function RecipesPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<CreateRecipePayload>(EMPTY_FORM)
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
-  const [ingredientsText, setIngredientsText] = useState('')
+  const [createIngRows, setCreateIngRows] = useState<RecipeIngredient[]>([{ ...BLANK_ING }])
   const [instructionsText, setInstructionsText] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -85,12 +87,12 @@ export default function RecipesPage() {
     try {
       const payload: CreateRecipePayload = {
         ...form,
-        ingredients: ingredientsText.split(',').map(s => s.trim()).filter(Boolean),
+        ingredients: createIngRows.filter(r => r.name.trim()),
         instructions: instructionsText.split('\n').map(s => s.trim()).filter(Boolean),
       }
       await createRecipe(payload)
       setForm(EMPTY_FORM)
-      setIngredientsText('')
+      setCreateIngRows([{ ...BLANK_ING }])
       setInstructionsText('')
       setShowForm(false)
       await load()
@@ -170,14 +172,48 @@ export default function RecipesPage() {
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium foreground-content mb-1">Ingredients (comma-separated)</label>
-              <textarea
-                rows={2}
-                className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                placeholder="flour, sugar, eggs..."
-                value={ingredientsText}
-                onChange={e => setIngredientsText(e.target.value)}
-              />
+              <label className="block text-xs font-medium foreground-content mb-1">Ingredients</label>
+              <div className="space-y-1.5">
+                {createIngRows.map((row, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <input
+                      className="flex-1 border border-line rounded px-3 py-1.5 text-sm"
+                      placeholder="Name"
+                      value={row.name}
+                      onChange={e => setCreateIngRows(rows => rows.map((r, idx) => idx === i ? { ...r, name: e.target.value } : r))}
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      className="w-20 border border-line rounded px-3 py-1.5 text-sm"
+                      placeholder="Qty"
+                      value={row.quantity ?? ''}
+                      onChange={e => setCreateIngRows(rows => rows.map((r, idx) => idx === i ? { ...r, quantity: e.target.value ? Number(e.target.value) : null } : r))}
+                    />
+                    <input
+                      className="w-20 border border-line rounded px-3 py-1.5 text-sm"
+                      placeholder="Unit"
+                      value={row.unit ?? ''}
+                      onChange={e => setCreateIngRows(rows => rows.map((r, idx) => idx === i ? { ...r, unit: e.target.value || null } : r))}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCreateIngRows(rows => rows.filter((_, idx) => idx !== i))}
+                      className="foreground-dim hover:foreground-content text-lg leading-none px-1"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCreateIngRows(rows => [...rows, { ...BLANK_ING }])}
+                  className="text-xs foreground-primary hover:underline"
+                >
+                  + Add ingredient
+                </button>
+              </div>
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium foreground-content mb-1">Instructions (one per line)</label>
