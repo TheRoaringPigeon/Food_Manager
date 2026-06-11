@@ -1,4 +1,5 @@
 import gradio as gr
+import httpx
 from sqlalchemy.orm import Session
 from database import get_db
 from services.ingredient_service import IngredientService
@@ -7,6 +8,7 @@ from schemas.ingredient import IngredientCreate
 from schemas.recipe import RecipeCreate
 from models.ingredient import IngredientTypeEnum
 from models.recipe import RecipeTypeEnum
+from constants import LLM_API
 
 
 # -----------------------
@@ -91,6 +93,57 @@ def mark_as_cooked(recipe_id):
 
 
 # -----------------------
+# RECOMMENDATION FUNCTIONS
+# -----------------------
+def get_recommendation(craving: str):
+  if not craving.strip():
+    return "Please enter a craving.", "", "", "", "", ""
+  try:
+    resp = httpx.post(
+        f"{LLM_API}/food-manager/llm/api/recommendations",
+        json={"query": craving},
+        timeout=120.0
+    )
+    resp.raise_for_status()
+    data = resp.json()
+  except Exception as e:
+    return f"Error: {e}", "", "", "", "", ""
+
+  recipe_name = data.get("recipe_name", "")
+  description = data.get("description") or ""
+  header = f"### {recipe_name}\n{description}"
+
+  why = data.get("why", "")
+
+  have = data.get("have_ingredients") or []
+  missing = data.get("missing_ingredients") or []
+  subs = data.get("substitutions") or {}
+  pantry_lines = ["**Have:**"] + [f"- {i}" for i in have] if have else ["**Have:** (none listed)"]
+  missing_lines = ["\n**Missing:**"] + [f"- {i}" for i in missing] if missing else ["\n**Missing:** (none)"]
+  subs_lines = ["\n**Substitutions:**"] + [f"- {k}: {v}" for k, v in subs.items()] if subs else []
+  pantry_text = "\n".join(pantry_lines + missing_lines + subs_lines)
+
+  raw_ingredients = data.get("ingredients") or []
+  ingredients_text = "\n".join(f"- {i}" for i in raw_ingredients) if raw_ingredients else "(not available)"
+
+  raw_instructions = data.get("instructions") or []
+  instructions_text = "\n".join(
+      f"{idx + 1}. {step}" for idx, step in enumerate(raw_instructions)
+  ) if raw_instructions else "(not available)"
+
+  times = []
+  if data.get("prep_time"):
+    times.append(f"Prep: {data['prep_time']} min")
+  if data.get("cook_time"):
+    times.append(f"Cook: {data['cook_time']} min")
+  time_text = " | ".join(times) if times else ""
+  if time_text:
+    header += f"\n\n{time_text}"
+
+  return header, why, pantry_text, ingredients_text, instructions_text, data.get("image_url") or ""
+
+
+# -----------------------
 # GRADIO INTERFACE
 # -----------------------
 with gr.Blocks(title="🍴 Food Manager") as demo:
@@ -165,3 +218,24 @@ with gr.Blocks(title="🍴 Food Manager") as demo:
       cook_btn = gr.Button("Mark as Cooked")
       toggle_fav_btn.click(toggle_favorite, inputs=recipe_id, outputs=favorite_output)
       cook_btn.click(mark_as_cooked, inputs=recipe_id, outputs=cook_output)
+
+  with gr.Tab("What should I cook?"):
+    gr.Markdown("### AI Recipe Recommendation")
+    gr.Markdown("Tell me what you're craving and I'll find the best recipe for what you have on hand.")
+    craving_input = gr.Textbox(
+        label="What are you in the mood for?",
+        placeholder="e.g. something sweet and spicy",
+        lines=2
+    )
+    recommend_btn = gr.Button("Find me a recipe")
+    rec_header = gr.Markdown()
+    rec_why = gr.Textbox(label="Why this recipe?", lines=3, interactive=False)
+    rec_pantry = gr.Textbox(label="Ingredients", lines=6, interactive=False)
+    rec_full_ingredients = gr.Textbox(label="Full ingredient list", lines=8, interactive=False)
+    rec_instructions = gr.Textbox(label="Instructions", lines=12, interactive=False)
+    rec_image = gr.Textbox(label="Image URL", interactive=False)
+    recommend_btn.click(
+        get_recommendation,
+        inputs=craving_input,
+        outputs=[rec_header, rec_why, rec_pantry, rec_full_ingredients, rec_instructions, rec_image]
+    )

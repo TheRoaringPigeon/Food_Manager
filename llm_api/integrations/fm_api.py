@@ -79,5 +79,18 @@ class FMApiClientAsync:
     resp.raise_for_status()
     return resp.json()
 
+  async def get_available_ingredients(self) -> list[dict]:
+    url = f"{self.base_url}/food-manager/api/ingredients"
+    resp = await self.client.get(url, params={"is_available": "true", "limit": 500})
+    resp.raise_for_status()
+    return resp.json()
+
+  async def get_recipes_by_ids(self, ids: list[int]) -> list[dict]:
+    ids_str = ",".join(str(i) for i in ids)
+    url = f"{self.base_url}/food-manager/api/recipes"
+    resp = await self.client.get(url, params={"ids": ids_str})
+    resp.raise_for_status()
+    return resp.json()
+
   async def close(self):
     await self.client.aclose()

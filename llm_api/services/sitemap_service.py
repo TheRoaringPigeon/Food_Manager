@@ -24,8 +24,13 @@ class SitemapService:
     Returns:
         List of filtered URLs from the sitemap
     """
+    headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.5",
+    }
     try:
-      async with aiohttp.ClientSession() as session:
+      async with aiohttp.ClientSession(headers=headers) as session:
         async with session.get(sitemap_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
           response.raise_for_status()
           content = await response.read()

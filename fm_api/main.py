@@ -13,6 +13,7 @@ for name in ["httpcore", "httpx"]:
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -71,6 +72,19 @@ async def info():
 @app.get(f"{API_CONTEXT_PATH}/health")
 async def read_root():
   return f"{API_INFO['title']} is Healthy and running in '{APP_ENVIRONMENT}' mode."
+
+
+@app.get("/manifest.json", include_in_schema=False)
+async def manifest():
+  return JSONResponse({
+      "name": "Food Manager",
+      "short_name": "FoodManager",
+      "start_url": "/food-manager-app",
+      "display": "standalone",
+      "background_color": "#ffffff",
+      "theme_color": "#ffffff",
+      "icons": []
+  })
 
 if APP_ENVIRONMENT == "development":
   app = gr.mount_gradio_app(app, demo, path="/food-manager-app")

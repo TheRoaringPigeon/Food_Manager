@@ -42,11 +42,14 @@ services:
       - PYTHONUNBUFFERED=1
       - APP_ENVIRONMENT=development
       - DB_HOST=postgres
-      - DB_NAME=fm_api
+      - DB_NAME=fm_db
+      - LLM_API=http://llm_api:5002
     env_file:
       - .env
     depends_on:
       postgres:
+        condition: service_started
+      llm_api:
         condition: service_started
     networks:
       - fm-net

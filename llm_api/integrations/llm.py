@@ -13,7 +13,7 @@ class OllamaLLM:
     self.model = model
     self.host = host.rstrip("/")
     self.api_url = f"{self.host}/api"
-    self.client = httpx.AsyncClient()
+    self.client = httpx.AsyncClient(timeout=300.0)
 
   async def chat(self, messages: list[dict], stream: bool = False) -> dict:
     """Call the Ollama /chat API endpoint."""
@@ -93,6 +93,61 @@ class OllamaLLM:
       return {
           "semantic_query": user_query,
           "filters": None
+      }
+
+  async def recommend_recipe(self, query: str, candidates: list[dict], pantry: list[dict]) -> dict:
+    """
+    Ask Ollama to pick the best recipe from candidates given a craving and available pantry.
+    Returns structured JSON with pick + reasoning + ingredient analysis.
+    """
+    candidates_text = "\n".join(
+        f"- ID {c['id']}: {c.get('metadata', {}).get('name', 'Unknown')} | Ingredients: {c.get('metadata', {}).get('keywords', '')}"
+        for c in candidates
+    )
+    pantry_text = ", ".join(
+        f"{p.get('name')} ({p.get('quantity', '')} {p.get('unit', '')})"
+        for p in pantry
+    ) or "No ingredients available"
+
+    prompt = f"""You are a recipe recommendation assistant.
+
+The user is craving: "{query}"
+
+Here are 5 candidate recipes from the database:
+{candidates_text}
+
+The user currently has these ingredients available:
+{pantry_text}
+
+Pick the single best recipe for the user's craving. Consider both how well the recipe matches the craving AND which ingredients the user already has.
+
+Return ONLY valid JSON in exactly this format:
+{{
+  "recipe_id": "<id as string>",
+  "recipe_name": "<name>",
+  "why": "<1-2 sentence explanation of why this recipe was chosen>",
+  "have_ingredients": ["<ingredient1>", "<ingredient2>"],
+  "missing_ingredients": ["<ingredient1>", "<ingredient2>"],
+  "substitutions": {{"<missing_ingredient>": "<suggested substitution>"}}
+}}
+
+Return ONLY valid JSON. No commentary."""
+
+    resp = await self.chat([{"role": "user", "content": prompt}])
+    content = resp["message"]["content"].strip()
+    try:
+      start = content.find("{")
+      end = content.rfind("}") + 1
+      return json.loads(content[start:end])
+    except (json.JSONDecodeError, ValueError):
+      fallback = candidates[0] if candidates else {}
+      return {
+          "recipe_id": str(fallback.get("id", "")),
+          "recipe_name": fallback.get("metadata", {}).get("name", "Unknown"),
+          "why": "Selected as closest match.",
+          "have_ingredients": [],
+          "missing_ingredients": [],
+          "substitutions": {}
       }
 
   async def build_document(self, recipe: dict) -> str:
