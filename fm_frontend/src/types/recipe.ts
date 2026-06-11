@@ -31,3 +31,15 @@ export interface CreateRecipePayload {
   recipe_type: RecipeType
   is_favorite: boolean
 }
+
+export interface UpdateRecipePayload {
+  name?: string
+  description?: string
+  ingredients?: string[]
+  instructions?: string[]
+  prep_time?: number | null
+  cook_time?: number | null
+  servings?: number | null
+  recipe_type?: RecipeType
+  is_favorite?: boolean
+}

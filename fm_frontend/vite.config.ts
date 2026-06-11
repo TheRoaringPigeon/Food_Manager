@@ -11,6 +11,12 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
       port: 5173,
+      watch: {
+        usePolling: true,
+      },
+      hmr: {
+        clientPort: 5173,
+      },
       proxy: {
         '/food-manager/llm': {
           target: llmApiUrl,
