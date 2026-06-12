@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    background-color: var(--color-input-bg);
+    color: var(--color-input-text);
+    border-color: var(--color-line);
+  }
+
+  input:not([type="checkbox"]):not([type="radio"])::placeholder,
+  textarea::placeholder {
+    color: var(--color-dim);
+  }
+
+  select option {
+    background-color: var(--color-input-bg);
+    color: var(--color-input-text);
+  }
+}
+
 :root, [data-theme="indigo"] {
   --color-primary:        #4f46e5;
   --color-primary-soft:   #e0e7ff;
@@ -21,6 +41,8 @@
   --color-surface-raised: #e0e7ff;
   --color-dim:            #9ca3af;
   --color-divider:        #f3f4f6;
+  --color-input-bg:       #ffffff;
+  --color-input-text:     #111827;
 }
 
 [data-theme="forest"] {
@@ -42,6 +64,8 @@
   --color-surface-raised: #dcfce7;
   --color-dim:            #9ca3af;
   --color-divider:        #f3f4f6;
+  --color-input-bg:       #ffffff;
+  --color-input-text:     #111827;
 }
 
 [data-theme="sunset"] {
@@ -63,6 +87,8 @@
   --color-surface-raised: #ffedd5;
   --color-dim:            #9ca3af;
   --color-divider:        #f3f4f6;
+  --color-input-bg:       #ffffff;
+  --color-input-text:     #111827;
 }
 
 [data-theme="ocean"] {
@@ -84,6 +110,8 @@
   --color-surface-raised: #ccfbf1;
   --color-dim:            #9ca3af;
   --color-divider:        #f3f4f6;
+  --color-input-bg:       #ffffff;
+  --color-input-text:     #111827;
 }
 
 [data-theme="rose"] {
@@ -105,6 +133,8 @@
   --color-surface-raised: #ffe4e6;
   --color-dim:            #9ca3af;
   --color-divider:        #f3f4f6;
+  --color-input-bg:       #ffffff;
+  --color-input-text:     #111827;
 }
 
 [data-theme="night"] {
@@ -126,4 +156,6 @@
   --color-surface-raised: #2e4060;
   --color-dim:            #64748b;
   --color-divider:        #253447;
+  --color-input-bg:       #0f172a;
+  --color-input-text:     #f1f5f9;
 }

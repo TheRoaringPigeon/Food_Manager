@@ -299,14 +299,14 @@ export default function IngredientsPage() {
               <button
                 onClick={() => setPage(p => p - 1)}
                 disabled={page <= 1}
-                className="px-3 py-1.5 text-xs border border-line rounded hover:background-surface-raised disabled:opacity-40"
+                className="px-3 py-1.5 text-xs border border-line rounded background-surface foreground-content hover:background-surface-raised disabled:opacity-40"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage(p => p + 1)}
                 disabled={page >= totalPages}
-                className="px-3 py-1.5 text-xs border border-line rounded hover:background-surface-raised disabled:opacity-40"
+                className="px-3 py-1.5 text-xs border border-line rounded background-surface foreground-content hover:background-surface-raised disabled:opacity-40"
               >
                 Next
               </button>
