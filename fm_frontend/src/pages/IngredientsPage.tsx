@@ -4,6 +4,17 @@ import { INGREDIENT_TYPES, UNIT_OPTIONS } from '../types/ingredient'
 import { listIngredients, countIngredients, createIngredient, toggleAvailability } from '../api/ingredients'
 import IngredientDetailModal from '../components/IngredientDetailModal'
 
+type SortKey = 'name' | 'ingredient_type' | 'qty' | 'status'
+type SortDir = 'asc' | 'desc'
+
+const HEADERS: { label: string; key: SortKey | null }[] = [
+  { label: 'Name', key: 'name' },
+  { label: 'Type', key: 'ingredient_type' },
+  { label: 'Qty / Unit', key: 'qty' },
+  { label: 'Status', key: 'status' },
+  { label: '', key: null },
+]
+
 const EMPTY_FORM: CreateIngredientPayload = {
   name: '',
   description: '',
@@ -31,6 +42,17 @@ export default function IngredientsPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [total, setTotal] = useState(0)
+  const [sortKey, setSortKey] = useState<SortKey>('name')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  const handleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350)
@@ -39,7 +61,7 @@ export default function IngredientsPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, typeFilter, availFilter, pageSize])
+  }, [debouncedSearch, typeFilter, availFilter, pageSize, sortKey, sortDir])
 
   const load = async () => {
     setLoading(true)
@@ -50,6 +72,8 @@ export default function IngredientsPage() {
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(typeFilter ? { ingredient_type: typeFilter } : {}),
         ...(availFilter !== '' ? { is_available: availFilter === 'true' } : {}),
+        sort_by: sortKey,
+        sort_dir: sortDir,
       }
       const [data, countData] = await Promise.all([
         listIngredients(params),
@@ -64,7 +88,7 @@ export default function IngredientsPage() {
     }
   }
 
-  useEffect(() => { load() }, [page, pageSize, debouncedSearch, typeFilter, availFilter])
+  useEffect(() => { load() }, [page, pageSize, debouncedSearch, typeFilter, availFilter, sortKey, sortDir])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -223,17 +247,25 @@ export default function IngredientsPage() {
             <table className="w-full text-sm">
               <thead className="background-canvas border-b border-line">
                 <tr>
-                  {['ID', 'Name', 'Type', 'Qty / Unit', 'Status', ''].map(h => (
-                    <th key={h} className="text-left px-4 py-2 text-xs font-medium foreground-subtle">{h}</th>
+                  {HEADERS.map(h => (
+                    <th
+                      key={h.label}
+                      onClick={() => h.key && handleSort(h.key)}
+                      className={`text-left px-4 py-2 text-xs font-medium foreground-subtle ${h.key ? 'cursor-pointer select-none hover:foreground-content' : ''}`}
+                    >
+                      {h.label}
+                      {h.key && sortKey === h.key && (
+                        <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider">
                 {ingredients.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center foreground-dim">No ingredients found.</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-6 text-center foreground-dim">No ingredients found.</td></tr>
                 ) : ingredients.map(ing => (
                   <tr key={ing.id} className="hover:background-surface-raised cursor-pointer" onClick={() => setSelectedIngredient(ing)}>
-                    <td className="px-4 py-2 foreground-dim">{ing.id}</td>
                     <td className="px-4 py-2 font-medium foreground-content">{ing.name}</td>
                     <td className="px-4 py-2 foreground-subtle capitalize">{ing.ingredient_type}</td>
                     <td className="px-4 py-2 foreground-subtle">

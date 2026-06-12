@@ -31,7 +31,7 @@ class SitemapService:
     }
     try:
       async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.get(sitemap_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+        async with session.get(sitemap_url, timeout=aiohttp.ClientTimeout(total=60)) as response:
           response.raise_for_status()
           content = await response.read()
 

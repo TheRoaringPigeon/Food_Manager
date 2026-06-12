@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, cast, func, literal, null
+from sqlalchemy import select, asc, desc, cast, func, literal, null, nullslast
 from sqlalchemy import Text
 from sqlalchemy.orm import aliased
 from models.recipe import Recipe, RecipeTypeEnum
@@ -91,6 +91,8 @@ class RecipeService:
         search: Optional[str] = None,
         ids: Optional[List[int]] = None,
         max_total_time: Optional[int] = None,
+        sort_by: str = 'name',
+        sort_dir: str = 'asc',
     ) -> List[Dict[str, Any]]:
         frs = aliased(FamilyRecipeStatus)
 
@@ -135,7 +137,22 @@ class RecipeService:
                 (func.coalesce(Recipe.prep_time, 0) + func.coalesce(Recipe.cook_time, 0)) <= max_total_time
             )
 
-        query = query.order_by(desc(Recipe.created_at)).offset(skip).limit(limit)
+        if sort_by == 'recipe_type':
+            sort_col = Recipe.recipe_type
+        elif sort_by == 'time':
+            sort_col = func.coalesce(Recipe.prep_time, 0) + func.coalesce(Recipe.cook_time, 0)
+        elif sort_by == 'last_cooked' and family_id is not None:
+            lc = frs.last_cooked
+            order_expr = nullslast(desc(lc)) if sort_dir == 'desc' else nullslast(asc(lc))
+            query = query.order_by(order_expr).offset(skip).limit(limit)
+            result = await db.execute(query)
+            rows = result.all()
+            return [_build_recipe_dict(r.Recipe, r.is_favorite, r.last_cooked) for r in rows]
+        else:
+            sort_col = Recipe.name
+
+        order_expr = desc(sort_col) if sort_dir == 'desc' else asc(sort_col)
+        query = query.order_by(order_expr).offset(skip).limit(limit)
         result = await db.execute(query)
 
         if family_id is not None:

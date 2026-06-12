@@ -43,21 +43,29 @@ class RecipePersistence:
     return (text, processed_metadata)
 
   async def save_recipe(self, result: dict):
-    """
-    Save recipe to FM API, ChromaDB, and local database.
-
-    Args:
-        result: Parsed recipe dictionary
-    """
+    """Save recipe to FM API, ChromaDB, and local database."""
     recipe_data = html_unescape_recursive(result)
 
-    text, metadata = await self.prepare_semantic_data(recipe_data=recipe_data)
+    # 1. Parse ingredients asynchronously alongside LLM metadata compilation
+    raw_ingredients = recipe_data.get("recipeIngredient", [])
 
+    text, pre_processed_metadata, structured_ingredients = await asyncio.gather(
+        self.llm_client.build_document(recipe=recipe_data),
+        self.llm_client.build_metadata(recipe=recipe_data),
+        self.llm_client.parse_ingredients(raw_ingredients)
+    )
+
+    # 2. Inject the newly structured ingredients into the payload sent to FM API
+    recipe_data["recipeIngredient"] = structured_ingredients
+
+    processed_metadata = self.chroma.process_json_for_vector_db(pre_processed_metadata)
+
+    # 3. Save downstream
     response = await self.fm_api_client.create_recipe(recipe_data)
     self.chroma.add(
         ids=[str(response.get("id"))],
         documents=[text],
-        metadatas=[metadata],
+        metadatas=[processed_metadata],
     )
 
     async with AsyncSessionLocal() as db:

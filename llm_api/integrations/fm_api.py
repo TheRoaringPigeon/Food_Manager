@@ -1,7 +1,7 @@
 import re
 import httpx
 from typing import Any, Dict, List, Optional
-from constants import FM_API
+from constants import FM_API, FM_API_SERVICE_USERNAME, FM_API_SERVICE_PASSWORD
 from models.Recipe import RecipeTypeEnum
 import json
 
@@ -13,10 +13,29 @@ class FMApiClientAsync:
   def __init__(self, base_url: str = FM_API):
     self.base_url = base_url.rstrip("/")
     self.client = httpx.AsyncClient(timeout=20.0)
+    self._token: Optional[str] = None
+
+  async def _ensure_token(self) -> str:
+    if self._token:
+      return self._token
+    resp = await self.client.post(
+      f"{self.base_url}/food-manager/api/auth/login",
+      json={"username": FM_API_SERVICE_USERNAME, "password": FM_API_SERVICE_PASSWORD},
+    )
+    resp.raise_for_status()
+    self._token = resp.json()["access_token"]
+    return self._token
+
+  def _auth_header(self) -> dict:
+    return {"Authorization": f"Bearer {self._token}"}
 
   def _time_to_minutes(self, value: Optional[str]) -> Optional[int]:
     if not value:
       return None
+    # ISO 8601 duration: PT1H30M, PT30M, PT1H
+    iso = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?', value, re.IGNORECASE)
+    if iso and (iso.group(1) or iso.group(2)):
+      return int(iso.group(1) or 0) * 60 + int(iso.group(2) or 0)
     value = value.lower()
     hours = re.search(r"(\d+)\s*(hour|hr|hrs)", value)
     minutes = re.search(r"(\d+)\s*(minute|min|mins)", value)
@@ -50,7 +69,8 @@ class FMApiClientAsync:
   def convert_to_recipe(self, data: Dict[str, Any]) -> Dict[str, Any]:
     name = data.get("name") or "Untitled Recipe"
     description = data.get("description")
-    ingredients = self._listify(data.get("recipeIngredient"))
+    raw = data.get("recipeIngredient") or []
+    ingredients = [v if isinstance(v, dict) else str(v).strip() for v in (raw if isinstance(raw, list) else [])]
     instructions = self._listify(data.get("recipeInstructions"))
     tags = data.get("keywords")
     prep_time = self._time_to_minutes(data.get("prepTime"))
@@ -73,22 +93,25 @@ class FMApiClientAsync:
     }
 
   async def create_recipe(self, recipe: dict) -> Dict[str, Any]:
+    await self._ensure_token()
     url = f"{self.base_url}/food-manager/api/recipes"
     payload = self.convert_to_recipe(recipe)
-    resp = await self.client.post(url, json=payload)
+    resp = await self.client.post(url, json=payload, headers=self._auth_header())
     resp.raise_for_status()
     return resp.json()
 
   async def get_available_ingredients(self) -> list[dict]:
+    await self._ensure_token()
     url = f"{self.base_url}/food-manager/api/ingredients"
-    resp = await self.client.get(url, params={"is_available": "true", "limit": 500})
+    resp = await self.client.get(url, params={"is_available": "true", "limit": 500}, headers=self._auth_header())
     resp.raise_for_status()
     return resp.json()
 
   async def get_recipes_by_ids(self, ids: list[int]) -> list[dict]:
+    await self._ensure_token()
     ids_str = ",".join(str(i) for i in ids)
     url = f"{self.base_url}/food-manager/api/recipes"
-    resp = await self.client.get(url, params={"ids": ids_str})
+    resp = await self.client.get(url, params={"ids": ids_str}, headers=self._auth_header())
     resp.raise_for_status()
     return resp.json()
 

@@ -88,5 +88,5 @@ class RecipeParser:
         html = await response.text()
         return RecipeParser.parse_recipe(html, url)
     except Exception as e:
-      logger.error(f"Error fetching {url}: {e}")
-      return {"url": url, "error": str(e)}
+      logger.error(f"Error fetching {url}: [{type(e).__name__}] {e}")
+      return {"url": url, "error": f"[{type(e).__name__}] {e}"}

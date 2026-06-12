@@ -172,12 +172,12 @@ class CrawlerService:
       result = await RecipeParser.fetch_and_parse(session, url)
 
       self.app.state.crawler.processed_urls += 1
-      if "error" in result:
+      if not result.get("name"):
         self.app.state.crawler.fail_count += 1
+        logger.warning(f"Skipping {url}: no recipe name extracted (error={result.get('error', 'no JSON-LD')})")
       else:
         self.app.state.crawler.success_count += 1
-
-      await self.persistence.save_recipe(result)
+        await self.persistence.save_recipe(result)
 
       return result
 
