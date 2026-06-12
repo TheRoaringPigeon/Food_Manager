@@ -1,3 +1,4 @@
+import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
@@ -18,7 +19,7 @@ class UserService:
     ) -> User:
         user = User(
             username=username,
-            hashed_password=hash_password(password),
+            hashed_password=await asyncio.to_thread(hash_password, password),
             role=role,
             family_id=family_id,
         )
@@ -83,7 +84,7 @@ class UserService:
         if username is not None:
             user.username = username
         if password is not None:
-            user.hashed_password = hash_password(password)
+            user.hashed_password = await asyncio.to_thread(hash_password, password)
         if theme is not None:
             user.theme = theme
         await db.commit()

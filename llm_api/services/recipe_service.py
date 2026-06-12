@@ -93,13 +93,13 @@ class RecipeService:
         filters = None
 
     try:
-      results = self.repo.query(
+      results = await self.repo.query(
           text=semantic,
           n_results=n_results,
           where=filters
       )
     except Exception:
-      results = self.repo.query(
+      results = await self.repo.query(
           text=semantic,
           n_results=n_results
       )

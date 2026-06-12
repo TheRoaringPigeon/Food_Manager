@@ -62,7 +62,7 @@ class RecipePersistence:
 
     # 3. Save downstream
     response = await self.fm_api_client.create_recipe(recipe_data)
-    self.chroma.add(
+    await self.chroma.add(
         ids=[str(response.get("id"))],
         documents=[text],
         metadatas=[processed_metadata],

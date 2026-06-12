@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Recipe, RecipeType, RecipeIngredient, UpdateRecipePayload } from '../types/recipe'
 import { RECIPE_TYPES } from '../types/recipe'
 import { updateRecipe, deleteRecipe } from '../api/recipes'
+import { listIngredients } from '../api/ingredients'
+import type { Ingredient } from '../types/ingredient'
 import { useAuth } from '../context/AuthContext'
+import { useCart } from '../context/CartContext'
 
 interface Props {
   recipe: Recipe
@@ -15,6 +18,7 @@ const BLANK_ING: RecipeIngredient = { name: '', quantity: null, unit: null }
 
 export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted }: Props) {
   const { isAdmin } = useAuth()
+  const { recipeIds, addRecipe, removeRecipe } = useCart()
   const [form, setForm] = useState<UpdateRecipePayload>({
     name: recipe.name,
     description: recipe.description,
@@ -31,6 +35,23 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
   const [error, setError] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  const [pantryIngredients, setPantryIngredients] = useState<Ingredient[]>([])
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null)
+
+  useEffect(() => {
+    listIngredients({ limit: 500, sort_by: 'name', sort_dir: 'asc' })
+      .then(setPantryIngredients)
+      .catch(() => {})
+  }, [])
+
+  const filterPantry = (query: string): Ingredient[] => {
+    const q = query.toLowerCase().trim()
+    const list = q
+      ? pantryIngredients.filter(ing => ing.name.toLowerCase().includes(q))
+      : pantryIngredients
+    return list.slice(0, 10)
+  }
 
   const handleDelete = async () => {
     setDeleting(true)
@@ -60,7 +81,9 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
     try {
       const payload: UpdateRecipePayload = {
         ...form,
-        ingredients: ingredientRows.filter(r => r.name.trim()),
+        ingredients: ingredientRows
+          .filter(r => r.name.trim())
+          .map(({ ingredient_id, name, quantity, unit }) => ({ ingredient_id, name, quantity, unit })),
         instructions: instructionsText.split('\n').map(s => s.trim()).filter(Boolean),
       }
       const updated = await updateRecipe(recipe.id, payload)
@@ -131,12 +154,59 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
               <div className="space-y-1.5">
                 {ingredientRows.map((row, i) => (
                   <div key={i} className="flex gap-2 items-center">
-                    <input
-                      className="flex-1 border border-line rounded px-3 py-1.5 text-sm"
-                      placeholder="Name"
-                      value={row.name}
-                      onChange={e => updateRow(i, { name: e.target.value })}
+                    {/* Availability dot — always rendered to keep layout stable */}
+                    <span
+                      className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        row.ingredient_id != null
+                          ? (row.is_available ? 'bg-green-500' : 'bg-red-500')
+                          : 'invisible'
+                      }`}
+                      title={
+                        row.ingredient_id != null
+                          ? (row.is_available ? 'In pantry' : 'Out of stock')
+                          : undefined
+                      }
                     />
+
+                    {/* Combo-box name input */}
+                    <div className="relative flex-1">
+                      <input
+                        autoComplete="off"
+                        className="w-full border border-line rounded px-3 py-1.5 text-sm"
+                        placeholder="Name"
+                        value={row.name}
+                        onFocus={() => setOpenDropdown(i)}
+                        onBlur={() => setTimeout(() => setOpenDropdown(null), 150)}
+                        onChange={e => updateRow(i, { name: e.target.value, ingredient_id: undefined, is_available: undefined })}
+                      />
+                      {openDropdown === i && filterPantry(row.name).length > 0 && (
+                        <ul className="absolute z-20 left-0 right-0 top-full mt-0.5 background-surface border border-line rounded shadow-lg max-h-40 overflow-y-auto text-sm">
+                          {filterPantry(row.name).map(ing => (
+                            <li key={ing.id}>
+                              <button
+                                type="button"
+                                className="w-full flex items-center gap-2 px-3 py-1.5 hover:background-surface-raised text-left"
+                                onMouseDown={e => {
+                                  e.preventDefault()
+                                  updateRow(i, {
+                                    ingredient_id: ing.id,
+                                    name: ing.name,
+                                    unit: ing.unit ?? null,
+                                    is_available: ing.is_available,
+                                  })
+                                  setOpenDropdown(null)
+                                }}
+                              >
+                                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ing.is_available ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span className="flex-1">{ing.name}</span>
+                                {ing.unit && <span className="foreground-dim text-xs">{ing.unit}</span>}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
                     <input
                       type="number"
                       min="0"
@@ -230,6 +300,17 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
               className="px-4 py-2 text-sm font-medium foreground-content border border-line rounded hover:background-surface-raised"
             >
               Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => recipeIds.includes(recipe.id) ? removeRecipe(recipe.id) : addRecipe(recipe.id)}
+              className={`px-3 py-2 text-sm font-medium border rounded ${
+                recipeIds.includes(recipe.id)
+                  ? 'foreground-primary border-current'
+                  : 'foreground-subtle border-line hover:background-surface-raised'
+              }`}
+            >
+              {recipeIds.includes(recipe.id) ? '✓ In Cart' : '+ Cart'}
             </button>
             {isAdmin && (
               <div className="ml-auto flex gap-2">

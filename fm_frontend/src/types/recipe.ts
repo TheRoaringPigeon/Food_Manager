@@ -5,9 +5,12 @@ export const RECIPE_TYPES: RecipeType[] = [
 ]
 
 export interface RecipeIngredient {
+  id?: number
+  ingredient_id?: number | null
   name: string
   quantity?: number | null
   unit?: string | null
+  is_available?: boolean | null
 }
 
 export interface Recipe {

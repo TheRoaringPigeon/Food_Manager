@@ -1,3 +1,4 @@
+import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
@@ -12,7 +13,9 @@ class AuthService:
     async def authenticate_user(db: AsyncSession, username: str, password: str) -> Optional[User]:
         result = await db.execute(select(User).filter(User.username == username))
         user = result.scalar_one_or_none()
-        if not user or not user.is_active or not verify_password(password, user.hashed_password):
+        if not user or not user.is_active:
+            return None
+        if not await asyncio.to_thread(verify_password, password, user.hashed_password):
             return None
         return user
 

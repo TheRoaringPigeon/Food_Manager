@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, asc, desc, cast, func, literal, null, nullslast
-from sqlalchemy import Text
-from sqlalchemy.orm import aliased
+from sqlalchemy import select, asc, desc, func, literal, null, nullslast, delete
+from sqlalchemy.orm import aliased, selectinload
 from models.recipe import Recipe, RecipeTypeEnum
+from models.recipe_ingredient import RecipeIngredient
 from models.family_recipe_status import FamilyRecipeStatus
 from models.ingredient import Ingredient
 from schemas.recipe import RecipeCreate, RecipeUpdate
@@ -10,12 +10,26 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 
+def _serialize_ingredients(recipe: Recipe) -> List[Dict[str, Any]]:
+    return [
+        {
+            "id": ri.id,
+            "ingredient_id": ri.ingredient_id,
+            "name": ri.name,
+            "quantity": ri.quantity,
+            "unit": ri.unit,
+            "is_available": ri.ingredient.is_available if ri.ingredient else None,
+        }
+        for ri in (recipe.ingredients or [])
+    ]
+
+
 def _build_recipe_dict(recipe: Recipe, is_favorite: bool, last_cooked) -> Dict[str, Any]:
     return {
         "id": recipe.id,
         "name": recipe.name,
         "description": recipe.description,
-        "ingredients": recipe.ingredients,
+        "ingredients": _serialize_ingredients(recipe),
         "instructions": recipe.instructions,
         "prep_time": recipe.prep_time,
         "cook_time": recipe.cook_time,
@@ -30,6 +44,10 @@ def _build_recipe_dict(recipe: Recipe, is_favorite: bool, last_cooked) -> Dict[s
     }
 
 
+def _ingredient_load_options():
+    return selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient)
+
+
 async def _get_recipe_with_status(
     db: AsyncSession, recipe_id: int, family_id: Optional[int]
 ) -> Optional[Dict[str, Any]]:
@@ -41,6 +59,7 @@ async def _get_recipe_with_status(
                 func.coalesce(frs.is_favorite, False).label("is_favorite"),
                 frs.last_cooked.label("last_cooked"),
             )
+            .options(_ingredient_load_options())
             .outerjoin(
                 frs,
                 (frs.recipe_id == Recipe.id) & (frs.family_id == family_id),
@@ -54,6 +73,7 @@ async def _get_recipe_with_status(
                 literal(False).label("is_favorite"),
                 null().label("last_cooked"),
             )
+            .options(_ingredient_load_options())
             .filter(Recipe.id == recipe_id)
         )
 
@@ -64,15 +84,33 @@ async def _get_recipe_with_status(
     return _build_recipe_dict(row.Recipe, row.is_favorite, row.last_cooked)
 
 
+def _insert_recipe_ingredients(db: AsyncSession, recipe_id: int, ingredients: list) -> None:
+    for i, ing in enumerate(ingredients):
+        db.add(RecipeIngredient(
+            recipe_id=recipe_id,
+            ingredient_id=ing.get("ingredient_id") if isinstance(ing, dict) else getattr(ing, "ingredient_id", None),
+            name=ing.get("name") if isinstance(ing, dict) else ing.name,
+            quantity=ing.get("quantity") if isinstance(ing, dict) else ing.quantity,
+            unit=ing.get("unit") if isinstance(ing, dict) else ing.unit,
+            sort_order=i,
+        ))
+
+
 class RecipeService:
 
     @staticmethod
     async def create_recipe(db: AsyncSession, recipe: RecipeCreate) -> Dict[str, Any]:
-        db_recipe = Recipe(**recipe.model_dump())
+        data = recipe.model_dump()
+        ingredients_data = data.pop("ingredients")
+
+        db_recipe = Recipe(**data)
         db.add(db_recipe)
+        await db.flush()  # get db_recipe.id before inserting children
+
+        _insert_recipe_ingredients(db, db_recipe.id, ingredients_data)
         await db.commit()
-        await db.refresh(db_recipe)
-        return _build_recipe_dict(db_recipe, False, None)
+
+        return await _get_recipe_with_status(db, db_recipe.id, None)
 
     @staticmethod
     async def get_recipe(
@@ -101,10 +139,11 @@ class RecipeService:
             last_cooked_col = frs.last_cooked
             query = (
                 select(Recipe, is_fav_col.label("is_favorite"), last_cooked_col.label("last_cooked"))
+                .options(_ingredient_load_options())
                 .outerjoin(frs, (frs.recipe_id == Recipe.id) & (frs.family_id == family_id))
             )
         else:
-            query = select(Recipe)
+            query = select(Recipe).options(_ingredient_load_options())
 
         if ids is not None:
             query = query.filter(Recipe.id.in_(ids))
@@ -121,15 +160,18 @@ class RecipeService:
             query = query.filter(func.coalesce(frs.is_favorite, False) == is_favorite)
         elif is_favorite is not None and family_id is None:
             if is_favorite:
-                query = query.filter(literal(False))  # no family = no favorites
+                query = query.filter(literal(False))
 
         if search:
             search_term = f"%{search}%"
+            ingredient_match = Recipe.id.in_(
+                select(RecipeIngredient.recipe_id).where(RecipeIngredient.name.ilike(search_term))
+            )
             query = query.filter(
-                (Recipe.name.ilike(search_term)) |
-                (Recipe.description.ilike(search_term)) |
-                (Recipe.tags.ilike(search_term)) |
-                (cast(Recipe.ingredients, Text).ilike(search_term))
+                Recipe.name.ilike(search_term) |
+                Recipe.description.ilike(search_term) |
+                Recipe.tags.ilike(search_term) |
+                ingredient_match
             )
 
         if max_total_time is not None:
@@ -190,11 +232,14 @@ class RecipeService:
 
         if search:
             search_term = f"%{search}%"
+            ingredient_match = Recipe.id.in_(
+                select(RecipeIngredient.recipe_id).where(RecipeIngredient.name.ilike(search_term))
+            )
             query = query.filter(
-                (Recipe.name.ilike(search_term)) |
-                (Recipe.description.ilike(search_term)) |
-                (Recipe.tags.ilike(search_term)) |
-                (cast(Recipe.ingredients, Text).ilike(search_term))
+                Recipe.name.ilike(search_term) |
+                Recipe.description.ilike(search_term) |
+                Recipe.tags.ilike(search_term) |
+                ingredient_match
             )
 
         if max_total_time is not None:
@@ -218,11 +263,16 @@ class RecipeService:
             return None
 
         update_data = recipe_update.model_dump(exclude_unset=True)
+        ingredients_data = update_data.pop("ingredients", None)
+
         for field, value in update_data.items():
             setattr(db_recipe, field, value)
 
+        if ingredients_data is not None:
+            await db.execute(delete(RecipeIngredient).where(RecipeIngredient.recipe_id == recipe_id))
+            _insert_recipe_ingredients(db, recipe_id, ingredients_data)
+
         await db.commit()
-        await db.refresh(db_recipe)
         return await _get_recipe_with_status(db, recipe_id, family_id)
 
     @staticmethod
@@ -277,7 +327,11 @@ class RecipeService:
         family_id: int,
         user_id: int,
     ) -> Optional[Dict[str, Any]]:
-        recipe_result = await db.execute(select(Recipe).filter(Recipe.id == recipe_id))
+        recipe_result = await db.execute(
+            select(Recipe)
+            .options(selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient))
+            .filter(Recipe.id == recipe_id)
+        )
         recipe_obj = recipe_result.scalar_one_or_none()
         if not recipe_obj:
             return None
@@ -302,24 +356,20 @@ class RecipeService:
             )
             db.add(status_row)
 
-        if recipe_obj.ingredients:
-            for ing in recipe_obj.ingredients:
-                if isinstance(ing, str):
-                    name, qty = ing, None
-                elif isinstance(ing, dict):
-                    name, qty = ing.get("name"), ing.get("quantity")
-                else:
-                    name, qty = None, None
-                if not name or not qty:
-                    continue
+        for ri in recipe_obj.ingredients:
+            if not ri.quantity:
+                continue
+            if ri.ingredient_id and ri.ingredient:
+                inv = ri.ingredient
+            else:
                 inv_result = await db.execute(
-                    select(Ingredient).filter(func.lower(Ingredient.name) == name.lower())
+                    select(Ingredient).filter(func.lower(Ingredient.name) == ri.name.lower())
                 )
                 inv = inv_result.scalar_one_or_none()
-                if inv and inv.quantity is not None:
-                    inv.quantity = max(0.0, inv.quantity - qty)
-                    if inv.quantity == 0:
-                        inv.is_available = False
+            if inv and inv.quantity is not None:
+                inv.quantity = max(0.0, inv.quantity - ri.quantity)
+                if inv.quantity == 0:
+                    inv.is_available = False
 
         await db.commit()
         return await _get_recipe_with_status(db, recipe_id, family_id)
@@ -333,6 +383,7 @@ class RecipeService:
         frs = aliased(FamilyRecipeStatus)
         query = (
             select(Recipe, frs.is_favorite.label("is_favorite"), frs.last_cooked.label("last_cooked"))
+            .options(_ingredient_load_options())
             .join(frs, (frs.recipe_id == Recipe.id) & (frs.family_id == family_id))
             .filter(frs.last_cooked.isnot(None))
             .order_by(desc(frs.last_cooked))

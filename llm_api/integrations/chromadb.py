@@ -1,3 +1,4 @@
+import asyncio
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 from constants import OLLAMA_HOST, OLLAMA_MODEL, CHROMA_HOST, CHROMA_PORT
 from chromadb import HttpClient
@@ -31,24 +32,25 @@ class ChromaRepository:
     else:
       return data
 
-  def add(
+  async def add(
       self,
       ids: list[str],
       documents: list[str] | None = None,
       metadatas: list[dict] | None = None
   ):
     """Add documents to the collection."""
-    return self.collection.add(
+    return await asyncio.to_thread(
+        self.collection.add,
         ids=ids,
         documents=documents,
         metadatas=metadatas
     )
 
-  def get(self, ids: list[str]):
+  async def get(self, ids: list[str]):
     """Retrieve documents by ID."""
-    return self.collection.get(ids=ids)
+    return await asyncio.to_thread(self.collection.get, ids=ids)
 
-  def query(
+  async def query(
       self,
       text: str = None,
       query_embeddings=None,
@@ -60,7 +62,8 @@ class ChromaRepository:
     Query the collection using text or embedding.
     Provide either `text` OR custom `query_embeddings`.
     """
-    return self.collection.query(
+    return await asyncio.to_thread(
+        self.collection.query,
         query_texts=[text] if text else None,
         query_embeddings=query_embeddings,
         n_results=n_results,
@@ -68,40 +71,42 @@ class ChromaRepository:
         where_document=where_document
     )
 
-  def update(
+  async def update(
       self,
       ids: list[str],
       documents: list[str] | None = None,
       metadatas: list[dict] | None = None,
   ):
     """Update documents or metadata for given IDs."""
-    return self.collection.update(
+    return await asyncio.to_thread(
+        self.collection.update,
         ids=ids,
         documents=documents,
         metadatas=metadatas
     )
 
-  def delete(
+  async def delete(
       self,
       ids: list[str] | None = None,
       where: dict | None = None,
       where_document: dict | None = None,
   ):
     """Delete documents by ID or filter."""
-    return self.collection.delete(
+    return await asyncio.to_thread(
+        self.collection.delete,
         ids=ids,
         where=where,
         where_document=where_document
     )
 
-  def count(self):
+  async def count(self):
     """Return the number of items in the collection."""
-    return self.collection.count()
+    return await asyncio.to_thread(self.collection.count)
 
-  def peek(self, n: int = 10):
+  async def peek(self, n: int = 10):
     """Preview a few items."""
-    return self.collection.peek(n)
+    return await asyncio.to_thread(self.collection.peek, n)
 
-  def all(self):
+  async def all(self):
     """Return all documents in the collection."""
-    return self.collection.get()
+    return await asyncio.to_thread(self.collection.get)

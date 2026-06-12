@@ -3,6 +3,7 @@ import type { Recipe, CreateRecipePayload, RecipeType, RecipeIngredient } from '
 import { RECIPE_TYPES } from '../types/recipe'
 import { listRecipes, countRecipes, createRecipe, toggleFavorite, markCooked } from '../api/recipes'
 import RecipeDetailModal from '../components/RecipeDetailModal'
+import { useCart } from '../context/CartContext'
 
 type SortKey = 'name' | 'recipe_type' | 'time' | 'last_cooked'
 type SortDir = 'asc' | 'desc'
@@ -38,6 +39,7 @@ const TIME_OPTIONS = [
 ]
 
 export default function RecipesPage() {
+  const { recipeIds, addRecipe, removeRecipe } = useCart()
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -383,6 +385,15 @@ export default function RecipesPage() {
                         className="text-xs foreground-primary hover:underline"
                       >
                         Cooked
+                      </button>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation()
+                          recipeIds.includes(recipe.id) ? removeRecipe(recipe.id) : addRecipe(recipe.id)
+                        }}
+                        className={`text-xs hover:underline ${recipeIds.includes(recipe.id) ? 'foreground-primary font-medium' : 'foreground-subtle'}`}
+                      >
+                        {recipeIds.includes(recipe.id) ? 'In Cart' : 'Cart'}
                       </button>
                     </td>
                   </tr>

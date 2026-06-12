@@ -3,6 +3,7 @@ import type { Ingredient, CreateIngredientPayload, IngredientType } from '../typ
 import { INGREDIENT_TYPES, UNIT_OPTIONS } from '../types/ingredient'
 import { listIngredients, countIngredients, createIngredient, toggleAvailability } from '../api/ingredients'
 import IngredientDetailModal from '../components/IngredientDetailModal'
+import { useCart } from '../context/CartContext'
 
 type SortKey = 'name' | 'ingredient_type' | 'qty' | 'status'
 type SortDir = 'asc' | 'desc'
@@ -27,6 +28,7 @@ const EMPTY_FORM: CreateIngredientPayload = {
 const PAGE_SIZES = [10, 20, 50]
 
 export default function IngredientsPage() {
+  const { ingredientIds, addIngredient, removeIngredient } = useCart()
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -278,12 +280,21 @@ export default function IngredientsPage() {
                         {ing.is_available ? 'Available' : 'Out of stock'}
                       </span>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 flex gap-2">
                       <button
                         onClick={e => { e.stopPropagation(); handleToggle(ing.id) }}
                         className="text-xs foreground-primary hover:underline"
                       >
                         Toggle
+                      </button>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation()
+                          ingredientIds.includes(ing.id) ? removeIngredient(ing.id) : addIngredient(ing.id)
+                        }}
+                        className={`text-xs hover:underline ${ingredientIds.includes(ing.id) ? 'foreground-primary font-medium' : 'foreground-subtle'}`}
+                      >
+                        {ingredientIds.includes(ing.id) ? 'In Cart' : 'Cart'}
                       </button>
                     </td>
                   </tr>
