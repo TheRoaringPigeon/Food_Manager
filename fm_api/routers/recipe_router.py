@@ -34,6 +34,8 @@ async def get_recipes(
     search: Optional[str] = None,
     ids: Optional[str] = Query(None, description="Comma-separated recipe IDs"),
     max_total_time: Optional[int] = Query(None, ge=1),
+    sort_by: str = Query('name', description="name | recipe_type | time | last_cooked"),
+    sort_dir: str = Query('asc', description="asc | desc"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -48,6 +50,8 @@ async def get_recipes(
         search=search,
         ids=parsed_ids,
         max_total_time=max_total_time,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
     )
 
 

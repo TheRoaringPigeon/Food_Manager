@@ -9,6 +9,8 @@ export interface RecipeListParams {
   search?: string
   max_total_time?: number
   ids?: number[]
+  sort_by?: string
+  sort_dir?: string
 }
 
 function buildQuery(params?: RecipeListParams): string {
@@ -21,6 +23,8 @@ function buildQuery(params?: RecipeListParams): string {
   if (params.search) q.set('search', params.search)
   if (params.max_total_time != null) q.set('max_total_time', String(params.max_total_time))
   if (params.ids?.length) q.set('ids', params.ids.join(','))
+  if (params.sort_by) q.set('sort_by', params.sort_by)
+  if (params.sort_dir) q.set('sort_dir', params.sort_dir)
   const s = q.toString()
   return s ? `?${s}` : ''
 }

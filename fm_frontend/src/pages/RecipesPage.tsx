@@ -4,6 +4,17 @@ import { RECIPE_TYPES } from '../types/recipe'
 import { listRecipes, countRecipes, createRecipe, toggleFavorite, markCooked } from '../api/recipes'
 import RecipeDetailModal from '../components/RecipeDetailModal'
 
+type SortKey = 'name' | 'recipe_type' | 'time' | 'last_cooked'
+type SortDir = 'asc' | 'desc'
+
+const HEADERS: { label: string; key: SortKey | null }[] = [
+  { label: 'Name', key: 'name' },
+  { label: 'Type', key: 'recipe_type' },
+  { label: 'Times', key: 'time' },
+  { label: 'Last Cooked', key: 'last_cooked' },
+  { label: '', key: null },
+]
+
 const BLANK_ING: RecipeIngredient = { name: '', quantity: null, unit: null }
 
 const EMPTY_FORM: CreateRecipePayload = {
@@ -45,6 +56,17 @@ export default function RecipesPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [total, setTotal] = useState(0)
+  const [sortKey, setSortKey] = useState<SortKey>('name')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  const handleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350)
@@ -53,7 +75,7 @@ export default function RecipesPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, typeFilter, favFilter, maxTime, pageSize])
+  }, [debouncedSearch, typeFilter, favFilter, maxTime, pageSize, sortKey, sortDir])
 
   const load = async () => {
     setLoading(true)
@@ -65,6 +87,8 @@ export default function RecipesPage() {
         ...(typeFilter ? { recipe_type: typeFilter } : {}),
         ...(favFilter !== '' ? { is_favorite: favFilter === 'true' } : {}),
         ...(maxTime ? { max_total_time: Number(maxTime) } : {}),
+        sort_by: sortKey,
+        sort_dir: sortDir,
       }
       const [data, countData] = await Promise.all([
         listRecipes(params),
@@ -79,7 +103,7 @@ export default function RecipesPage() {
     }
   }
 
-  useEffect(() => { load() }, [page, pageSize, debouncedSearch, typeFilter, favFilter, maxTime])
+  useEffect(() => { load() }, [page, pageSize, debouncedSearch, typeFilter, favFilter, maxTime, sortKey, sortDir])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -279,15 +303,16 @@ export default function RecipesPage() {
           <option value="">All types</option>
           {RECIPE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select
-          className="border border-line rounded px-3 py-1.5 text-sm"
-          value={favFilter}
-          onChange={e => setFavFilter(e.target.value)}
+        <button
+          onClick={() => setFavFilter(f => f === 'true' ? '' : 'true')}
+          className={`px-3 py-1.5 text-sm border rounded flex items-center gap-1 ${
+            favFilter === 'true'
+              ? 'border-yellow-400 bg-yellow-50 text-yellow-700'
+              : 'border-line foreground-subtle hover:background-surface-raised'
+          }`}
         >
-          <option value="">All</option>
-          <option value="true">Favorites only</option>
-          <option value="false">Non-favorites</option>
-        </select>
+          ★ Favorites
+        </button>
         <select
           className="border border-line rounded px-3 py-1.5 text-sm"
           value={maxTime}
@@ -313,17 +338,25 @@ export default function RecipesPage() {
             <table className="w-full text-sm">
               <thead className="background-canvas border-b border-line">
                 <tr>
-                  {['ID', 'Name', 'Type', 'Times', 'Last Cooked', ''].map(h => (
-                    <th key={h} className="text-left px-4 py-2 text-xs font-medium foreground-subtle">{h}</th>
+                  {HEADERS.map(h => (
+                    <th
+                      key={h.label}
+                      onClick={() => h.key && handleSort(h.key)}
+                      className={`text-left px-4 py-2 text-xs font-medium foreground-subtle ${h.key ? 'cursor-pointer select-none hover:foreground-content' : ''}`}
+                    >
+                      {h.label}
+                      {h.key && sortKey === h.key && (
+                        <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider">
                 {recipes.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center foreground-dim">No recipes found.</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-6 text-center foreground-dim">No recipes found.</td></tr>
                 ) : recipes.map(recipe => (
                   <tr key={recipe.id} className="hover:background-surface-raised cursor-pointer" onClick={() => setSelectedRecipe(recipe)}>
-                    <td className="px-4 py-2 foreground-dim">{recipe.id}</td>
                     <td className="px-4 py-2">
                       <span className="font-medium foreground-content">{recipe.name}</span>
                       {recipe.is_favorite && <span className="ml-1 text-yellow-500">★</span>}

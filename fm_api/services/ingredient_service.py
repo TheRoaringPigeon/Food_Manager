@@ -1,8 +1,15 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, desc, func
+from sqlalchemy import select, update, delete, asc, desc, func, nullslast
 from models.ingredient import Ingredient, IngredientTypeEnum
 from schemas.ingredient import IngredientCreate, IngredientUpdate
 from typing import List, Optional
+
+_INGREDIENT_SORT_COLS = {
+    'name': Ingredient.name,
+    'ingredient_type': Ingredient.ingredient_type,
+    'qty': Ingredient.quantity,
+    'status': Ingredient.is_available,
+}
 
 
 class IngredientService:
@@ -27,7 +34,9 @@ class IngredientService:
       limit: int = 100,
       ingredient_type: Optional[IngredientTypeEnum] = None,
       is_available: Optional[bool] = None,
-      search: Optional[str] = None
+      search: Optional[str] = None,
+      sort_by: str = 'name',
+      sort_dir: str = 'asc',
   ) -> List[Ingredient]:
     query = select(Ingredient)
     if ingredient_type:
@@ -42,7 +51,9 @@ class IngredientService:
           (Ingredient.tags.ilike(search_term))
       )
 
-    query = query.order_by(desc(Ingredient.created_at)).offset(skip).limit(limit)
+    sort_col = _INGREDIENT_SORT_COLS.get(sort_by, Ingredient.name)
+    order_expr = desc(sort_col) if sort_dir == 'desc' else asc(sort_col)
+    query = query.order_by(order_expr).offset(skip).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
 

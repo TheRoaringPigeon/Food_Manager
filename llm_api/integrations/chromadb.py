@@ -6,7 +6,7 @@ from typing import Any
 embedding_fn = OllamaEmbeddingFunction(
     model_name=OLLAMA_MODEL,
     url=OLLAMA_HOST,
-    timeout=30
+    timeout=120
 )
 
 

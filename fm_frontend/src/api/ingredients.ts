@@ -7,6 +7,8 @@ export interface IngredientListParams {
   ingredient_type?: string
   is_available?: boolean
   search?: string
+  sort_by?: string
+  sort_dir?: string
 }
 
 function buildQuery(params?: IngredientListParams): string {
@@ -17,6 +19,8 @@ function buildQuery(params?: IngredientListParams): string {
   if (params.ingredient_type) q.set('ingredient_type', params.ingredient_type)
   if (params.is_available != null) q.set('is_available', String(params.is_available))
   if (params.search) q.set('search', params.search)
+  if (params.sort_by) q.set('sort_by', params.sort_by)
+  if (params.sort_dir) q.set('sort_dir', params.sort_dir)
   const s = q.toString()
   return s ? `?${s}` : ''
 }
