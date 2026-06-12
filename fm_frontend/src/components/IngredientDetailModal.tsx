@@ -3,6 +3,7 @@ import type { Ingredient, IngredientType, UpdateIngredientPayload } from '../typ
 import { INGREDIENT_TYPES, UNIT_OPTIONS } from '../types/ingredient'
 import { updateIngredient, deleteIngredient } from '../api/ingredients'
 import { useAuth } from '../context/AuthContext'
+import { useCart } from '../context/CartContext'
 
 interface Props {
   ingredient: Ingredient
@@ -13,6 +14,7 @@ interface Props {
 
 export default function IngredientDetailModal({ ingredient, onClose, onSaved, onDeleted }: Props) {
   const { isAdmin } = useAuth()
+  const { ingredientIds, addIngredient, removeIngredient } = useCart()
   const [form, setForm] = useState<UpdateIngredientPayload>({
     name: ingredient.name,
     description: ingredient.description,
@@ -158,6 +160,17 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved, on
               className="px-4 py-2 text-sm font-medium foreground-content border border-line rounded hover:background-surface-raised"
             >
               Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => ingredientIds.includes(ingredient.id) ? removeIngredient(ingredient.id) : addIngredient(ingredient.id)}
+              className={`px-3 py-2 text-sm font-medium border rounded ${
+                ingredientIds.includes(ingredient.id)
+                  ? 'foreground-primary border-current'
+                  : 'foreground-subtle border-line hover:background-surface-raised'
+              }`}
+            >
+              {ingredientIds.includes(ingredient.id) ? '✓ In Cart' : '+ Cart'}
             </button>
             {isAdmin && (
               <div className="ml-auto flex gap-2">

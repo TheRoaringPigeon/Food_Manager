@@ -4,24 +4,42 @@ from datetime import datetime
 from models.recipe import RecipeTypeEnum
 
 
-class RecipeIngredient(BaseModel):
+class RecipeIngredientInput(BaseModel):
+    ingredient_id: Optional[int] = None
     name: str
     quantity: Optional[float] = None
     unit: Optional[str] = None
 
 
-def _normalize_ingredient(v: Any) -> RecipeIngredient:
+class RecipeIngredientResponse(BaseModel):
+    id: int
+    ingredient_id: Optional[int] = None
+    name: str
+    quantity: Optional[float] = None
+    unit: Optional[str] = None
+    is_available: Optional[bool] = None
+
+    class Config:
+        from_attributes = True
+
+
+def _normalize_ingredient(v: Any) -> RecipeIngredientInput:
     if isinstance(v, str):
-        return RecipeIngredient(name=v)
+        return RecipeIngredientInput(name=v)
     if isinstance(v, dict):
-        return RecipeIngredient(**v)
+        return RecipeIngredientInput(
+            ingredient_id=v.get('ingredient_id'),
+            name=v.get('name', ''),
+            quantity=v.get('quantity'),
+            unit=v.get('unit'),
+        )
     return v
 
 
 class RecipeBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    ingredients: List[RecipeIngredient]
+    ingredients: List[RecipeIngredientInput]
     instructions: List[str]
     prep_time: Optional[int] = Field(None, ge=0)
     cook_time: Optional[int] = Field(None, ge=0)
@@ -32,7 +50,7 @@ class RecipeBase(BaseModel):
 
     @field_validator('ingredients', mode='before')
     @classmethod
-    def normalize_ingredients(cls, v: List[Any]) -> List[RecipeIngredient]:
+    def normalize_ingredients(cls, v: List[Any]) -> List[RecipeIngredientInput]:
         return [_normalize_ingredient(item) for item in v]
 
 
@@ -43,7 +61,7 @@ class RecipeCreate(RecipeBase):
 class RecipeUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
-    ingredients: Optional[List[RecipeIngredient]] = None
+    ingredients: Optional[List[RecipeIngredientInput]] = None
     instructions: Optional[List[str]] = None
     prep_time: Optional[int] = Field(None, ge=0)
     cook_time: Optional[int] = Field(None, ge=0)
@@ -64,7 +82,7 @@ class RecipeResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
-    ingredients: List[RecipeIngredient]
+    ingredients: List[RecipeIngredientResponse]
     instructions: List[str]
     prep_time: Optional[int] = None
     cook_time: Optional[int] = None
@@ -76,13 +94,6 @@ class RecipeResponse(BaseModel):
     last_cooked: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
-
-    @field_validator('ingredients', mode='before')
-    @classmethod
-    def normalize_ingredients(cls, v: Any) -> Any:
-        if v is None:
-            return []
-        return [_normalize_ingredient(item) for item in v]
 
     class Config:
         from_attributes = True

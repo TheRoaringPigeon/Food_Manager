@@ -18,7 +18,7 @@ class RecommendationService:
 
   async def recommend(self, query: str) -> dict:
     # 1. Semantic search -> 5 candidates
-    chroma_results = self.repo.query(text=query, n_results=5)
+    chroma_results = await self.repo.query(text=query, n_results=5)
     candidates = await RecipeService.format_results(chroma_results)
 
     # 2. Fetch full recipes from fm_api by IDs

@@ -20,6 +20,7 @@ from routers import (
     auth_router,
     user_router,
     family_router,
+    shopping_list_router,
 )
 from utils.seeder import seed_defaults
 
@@ -47,6 +48,7 @@ app.include_router(user_router)
 app.include_router(family_router)
 app.include_router(recipe_router)
 app.include_router(ingredient_router)
+app.include_router(shopping_list_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { getRecommendation, type RecommendationResponse } from '../api/recommendations'
+import { useCart } from '../context/CartContext'
 
 export default function RecommendationsPage() {
+  const { recipeIds, addRecipe, removeRecipe } = useCart()
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<RecommendationResponse | null>(null)
@@ -52,7 +54,25 @@ export default function RecommendationsPage() {
       {result && (
         <div className="background-surface border border-line rounded-lg overflow-hidden">
           <div className="p-4 border-b border-divider background-primary-soft">
-            <h2 className="text-lg font-bold foreground-content">{result.recipe_name}</h2>
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="text-lg font-bold foreground-content">{result.recipe_name}</h2>
+              {result.recipe_id && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = Number(result.recipe_id)
+                    recipeIds.includes(id) ? removeRecipe(id) : addRecipe(id)
+                  }}
+                  className={`flex-shrink-0 px-3 py-1 text-xs font-medium border rounded ${
+                    recipeIds.includes(Number(result.recipe_id))
+                      ? 'foreground-primary border-current'
+                      : 'foreground-subtle border-line hover:background-surface-raised'
+                  }`}
+                >
+                  {recipeIds.includes(Number(result.recipe_id)) ? '✓ In Cart' : '+ Cart'}
+                </button>
+              )}
+            </div>
             {result.description && (
               <p className="foreground-subtle text-sm mt-1">{result.description}</p>
             )}

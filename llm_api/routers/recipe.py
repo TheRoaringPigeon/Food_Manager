@@ -54,10 +54,10 @@ async def get_recipe(
     db: AsyncSession = Depends(get_db)
 ):
   """Get a specific recipe by ID"""
-  recipe = RecipeService.get_recipe(db, recipe_id)
+  recipe = await RecipeService.get_recipe(db, recipe_id)
   if not recipe:
     raise HTTPException(status_code=404, detail="Recipe not found")
-  return await recipe
+  return recipe
 
 
 @router.delete("/{recipe_id}", status_code=204)
@@ -66,6 +66,6 @@ async def delete_recipe(
     db: AsyncSession = Depends(get_db)
 ):
   """Delete a recipe"""
-  success = RecipeService.delete_recipe(db, recipe_id)
+  success = await RecipeService.delete_recipe(db, recipe_id)
   if not success:
     raise HTTPException(status_code=404, detail="Recipe not found")

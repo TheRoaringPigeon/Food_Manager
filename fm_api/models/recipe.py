@@ -22,7 +22,6 @@ class Recipe(Base):
   id = Column(Integer, primary_key=True, index=True)
   name = Column(String(255), nullable=False, index=True)
   description = Column(Text, nullable=True)
-  ingredients = Column(JSONBCompatible, nullable=False)
   instructions = Column(JSONBCompatible, nullable=False)
   prep_time = Column(Integer, nullable=True)
   cook_time = Column(Integer, nullable=True)
@@ -33,6 +32,12 @@ class Recipe(Base):
   created_at = Column(DateTime, server_default=func.now(), nullable=False)
   updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 
+  ingredients = relationship(
+      "RecipeIngredient",
+      back_populates="recipe",
+      cascade="all, delete-orphan",
+      order_by="RecipeIngredient.sort_order",
+  )
   family_statuses = relationship("FamilyRecipeStatus", back_populates="recipe", cascade="all, delete-orphan")
 
   def __repr__(self):

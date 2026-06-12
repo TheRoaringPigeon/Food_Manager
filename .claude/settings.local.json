@@ -10,7 +10,8 @@
       "Bash(curl *http://localhost:8000/api*)",
       "PowerShell(docker restart llm_api *)",
       "Bash(docker exec postgres *)",
-      "Bash(docker exec llm_api *)"
+      "Bash(docker exec llm_api *)",
+      "Bash(xargs grep -l \"TODO\\\\|FIXME\\\\|XXX\\\\|BUG\")"
     ],
     "deny": [
       "Read(.env)",
