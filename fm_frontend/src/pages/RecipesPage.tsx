@@ -421,6 +421,11 @@ export default function RecipesPage() {
             setRecipes(prev => prev.map(r => r.id === updated.id ? updated : r))
             setSelectedRecipe(null)
           }}
+          onDeleted={() => {
+            setRecipes(prev => prev.filter(r => r.id !== selectedRecipe.id))
+            setTotal(t => t - 1)
+            setSelectedRecipe(null)
+          }}
         />
       )}
     </div>

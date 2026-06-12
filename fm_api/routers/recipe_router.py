@@ -7,7 +7,7 @@ from schemas.recipe import RecipeCreate, RecipeUpdate, RecipeResponse, RecipeCou
 from services.recipe_service import RecipeService
 from models.recipe import RecipeTypeEnum
 from models.user import User
-from dependencies.auth import get_current_user
+from dependencies.auth import get_current_user, require_admin
 from constants import API_CONTEXT_PATH
 
 router = APIRouter(
@@ -114,7 +114,7 @@ async def update_recipe(
 @router.delete("/{recipe_id}", status_code=204)
 async def delete_recipe(
     recipe_id: int,
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     success = await RecipeService.delete_recipe(db, recipe_id)

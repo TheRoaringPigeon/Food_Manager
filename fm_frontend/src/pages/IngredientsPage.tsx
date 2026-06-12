@@ -322,6 +322,11 @@ export default function IngredientsPage() {
             setIngredients(prev => prev.map(i => i.id === updated.id ? updated : i))
             setSelectedIngredient(null)
           }}
+          onDeleted={() => {
+            setIngredients(prev => prev.filter(i => i.id !== selectedIngredient.id))
+            setTotal(t => t - 1)
+            setSelectedIngredient(null)
+          }}
         />
       )}
     </div>

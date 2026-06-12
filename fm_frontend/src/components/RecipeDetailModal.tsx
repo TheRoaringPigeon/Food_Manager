@@ -1,17 +1,20 @@
 import { useState } from 'react'
 import type { Recipe, RecipeType, RecipeIngredient, UpdateRecipePayload } from '../types/recipe'
 import { RECIPE_TYPES } from '../types/recipe'
-import { updateRecipe } from '../api/recipes'
+import { updateRecipe, deleteRecipe } from '../api/recipes'
+import { useAuth } from '../context/AuthContext'
 
 interface Props {
   recipe: Recipe
   onClose: () => void
   onSaved: (updated: Recipe) => void
+  onDeleted: () => void
 }
 
 const BLANK_ING: RecipeIngredient = { name: '', quantity: null, unit: null }
 
-export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
+export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted }: Props) {
+  const { isAdmin } = useAuth()
   const [form, setForm] = useState<UpdateRecipePayload>({
     name: recipe.name,
     description: recipe.description,
@@ -26,6 +29,20 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
   const [instructionsText, setInstructionsText] = useState(recipe.instructions.join('\n'))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      await deleteRecipe(recipe.id)
+      onDeleted()
+    } catch (e) {
+      setError(String(e))
+      setDeleting(false)
+      setConfirmingDelete(false)
+    }
+  }
 
   const updateRow = (i: number, patch: Partial<RecipeIngredient>) =>
     setIngredientRows(rows => rows.map((r, idx) => idx === i ? { ...r, ...patch } : r))
@@ -199,7 +216,7 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
             <div>Updated: {new Date(recipe.updated_at).toLocaleDateString()}</div>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex items-center gap-2 pt-2">
             <button
               type="submit"
               disabled={submitting}
@@ -214,6 +231,38 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved }: Props) {
             >
               Cancel
             </button>
+            {isAdmin && (
+              <div className="ml-auto flex gap-2">
+                {confirmingDelete ? (
+                  <>
+                    <span className="text-sm foreground-subtle self-center">Delete this recipe?</span>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="px-3 py-1.5 text-sm font-medium bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {deleting ? 'Deleting...' : 'Confirm'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDelete(false)}
+                      className="px-3 py-1.5 text-sm font-medium foreground-content border border-line rounded hover:background-surface-raised"
+                    >
+                      No, keep it
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(true)}
+                    className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-300 rounded hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </form>
       </div>
