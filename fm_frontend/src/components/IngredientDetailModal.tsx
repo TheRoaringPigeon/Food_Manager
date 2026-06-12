@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import type { Ingredient, IngredientType, UpdateIngredientPayload } from '../types/ingredient'
 import { INGREDIENT_TYPES, UNIT_OPTIONS } from '../types/ingredient'
-import { updateIngredient } from '../api/ingredients'
+import { updateIngredient, deleteIngredient } from '../api/ingredients'
+import { useAuth } from '../context/AuthContext'
 
 interface Props {
   ingredient: Ingredient
   onClose: () => void
   onSaved: (updated: Ingredient) => void
+  onDeleted: () => void
 }
 
-export default function IngredientDetailModal({ ingredient, onClose, onSaved }: Props) {
+export default function IngredientDetailModal({ ingredient, onClose, onSaved, onDeleted }: Props) {
+  const { isAdmin } = useAuth()
   const [form, setForm] = useState<UpdateIngredientPayload>({
     name: ingredient.name,
     description: ingredient.description,
@@ -20,6 +23,20 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved }: 
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      await deleteIngredient(ingredient.id)
+      onDeleted()
+    } catch (e) {
+      setError(String(e))
+      setDeleting(false)
+      setConfirmingDelete(false)
+    }
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -127,7 +144,7 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved }: 
             <div>Updated: {new Date(ingredient.updated_at).toLocaleDateString()}</div>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex items-center gap-2 pt-2">
             <button
               type="submit"
               disabled={submitting}
@@ -142,6 +159,38 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved }: 
             >
               Cancel
             </button>
+            {isAdmin && (
+              <div className="ml-auto flex gap-2">
+                {confirmingDelete ? (
+                  <>
+                    <span className="text-sm foreground-subtle self-center">Delete this ingredient?</span>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="px-3 py-1.5 text-sm font-medium bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {deleting ? 'Deleting...' : 'Confirm'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDelete(false)}
+                      className="px-3 py-1.5 text-sm font-medium foreground-content border border-line rounded hover:background-surface-raised"
+                    >
+                      No, keep it
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(true)}
+                    className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-300 rounded hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </form>
       </div>

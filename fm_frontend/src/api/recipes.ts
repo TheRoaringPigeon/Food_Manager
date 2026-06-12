@@ -52,3 +52,6 @@ export const updateRecipe = (id: number, payload: UpdateRecipePayload) =>
     method: 'PUT',
     body: JSON.stringify(payload),
   })
+
+export const deleteRecipe = (id: number) =>
+  apiFetch<void>(`/recipes/${id}`, { method: 'DELETE' })

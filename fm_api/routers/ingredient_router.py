@@ -6,7 +6,7 @@ from schemas.ingredient import IngredientCreate, IngredientUpdate, IngredientRes
 from services.ingredient_service import IngredientService
 from models.ingredient import IngredientTypeEnum
 from models.user import User
-from dependencies.auth import get_current_user
+from dependencies.auth import get_current_user, require_admin
 from constants import API_CONTEXT_PATH
 
 router = APIRouter(
@@ -93,7 +93,7 @@ async def update_ingredient(
 @router.delete("/{ingredient_id}", status_code=204)
 async def delete_ingredient(
     ingredient_id: int,
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     success = await IngredientService.delete_ingredient(db, ingredient_id)
