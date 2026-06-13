@@ -115,5 +115,11 @@ class FMApiClientAsync:
     resp.raise_for_status()
     return resp.json()
 
+  async def delete_recipe(self, recipe_id: int) -> None:
+    await self._ensure_token()
+    url = f"{self.base_url}/food-manager/api/recipes/{recipe_id}"
+    resp = await self.client.delete(url, headers=self._auth_header())
+    resp.raise_for_status()
+
   async def close(self):
     await self.client.aclose()

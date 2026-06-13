@@ -60,20 +60,41 @@ class RecipePersistence:
 
     processed_metadata = self.chroma.process_json_for_vector_db(pre_processed_metadata)
 
-    # 3. Save downstream
-    response = await self.fm_api_client.create_recipe(recipe_data)
-    await self.chroma.add(
-        ids=[str(response.get("id"))],
-        documents=[text],
-        metadatas=[processed_metadata],
-    )
-
+    # 3. Track URL first — prevents re-processing this URL if downstream saves fail
     async with AsyncSessionLocal() as db:
       save_url_response = await RecipeService.create_recipe(
           db=db,
           recipe=RecipeCreate(url=result.get("url"))
       )
       logger.debug(f"Saved URL to database: {save_url_response}")
+
+    # 4. Save to fm_api then ChromaDB; roll back both if ChromaDB fails
+    response = await self.fm_api_client.create_recipe(recipe_data)
+    fm_recipe_id = response.get("id")
+    try:
+      await self.chroma.add(
+          ids=[str(fm_recipe_id)],
+          documents=[text],
+          metadatas=[processed_metadata],
+      )
+    except Exception as chroma_error:
+      logger.error(f"ChromaDB add failed for recipe_id={fm_recipe_id}, rolling back: {chroma_error}")
+      fm_api_rolled_back = False
+      try:
+        await self.fm_api_client.delete_recipe(fm_recipe_id)
+        fm_api_rolled_back = True
+      except Exception as rollback_error:
+        logger.error(f"fm_api rollback failed for recipe_id={fm_recipe_id}: {rollback_error}")
+
+      if fm_api_rolled_back:
+        async with AsyncSessionLocal() as db:
+          await RecipeService.delete_recipe(db=db, recipe_id=save_url_response.id)
+      else:
+        logger.warning(
+            f"URL tracking kept for recipe_id={fm_recipe_id} — fm_api rollback failed, "
+            f"recipe exists in postgres without a ChromaDB entry"
+        )
+      raise chroma_error
 
   @staticmethod
   def normalize_url(url: str) -> str:
