@@ -72,6 +72,7 @@ services:
     environment:
       - VITE_API_URL=http://fm_api:5001
       - VITE_LLM_API_URL=http://llm_api:5002
+      - VITE_BASE_PATH=${VITE_BASE_PATH:-/food-manager}
     depends_on:
       - fm_api
     networks:

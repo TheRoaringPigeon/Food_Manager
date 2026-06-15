@@ -1,0 +1,55 @@
+# Production overlay — run with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Required vars in .env:
+#   CADDY_DOMAIN=home.yourdomain.com
+#   VITE_BASE_PATH=/food-manager   (default if omitted)
+#   JWT_SECRET_KEY=<strong secret>
+
+services:
+
+  fm_frontend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.fm-frontend.production
+      args:
+        - VITE_BASE_PATH=${VITE_BASE_PATH:-/food-manager}
+    # nginx listens on 80 internally; Caddy is the only public entry point
+    ports: []
+    environment:
+      - VITE_BASE_PATH=${VITE_BASE_PATH:-/food-manager}
+    # No hot-reload volume mounts needed in production
+    volumes: []
+
+  fm_api:
+    environment:
+      - APP_ENVIRONMENT=production
+
+  llm_api:
+    environment:
+      - APP_ENVIRONMENT=production
+
+  caddy:
+    image: caddy:latest
+    container_name: fm_caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - CADDY_DOMAIN=${CADDY_DOMAIN}
+    networks:
+      - fm-net
+    depends_on:
+      - fm_frontend
+      - fm_api
+      - llm_api
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

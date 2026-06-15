@@ -1,0 +1,27 @@
+{$CADDY_DOMAIN} {
+
+    # Backend APIs — routed directly, no path stripping needed
+    # (fm_api and llm_api already expect /food-manager/api and /food-manager/llm prefixes)
+    handle /food-manager/api/* {
+        reverse_proxy fm_api:5001
+    }
+
+    handle /food-manager/llm/* {
+        reverse_proxy llm_api:5002
+    }
+
+    # Everything else (including /) goes to the nginx frontend container.
+    # nginx handles the root redirect and SPA routing.
+    handle /* {
+        reverse_proxy fm_frontend:80
+    }
+
+    encode gzip
+
+    header {
+        Strict-Transport-Security "max-age=31536000;"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "no-referrer-when-downgrade"
+    }
+}
