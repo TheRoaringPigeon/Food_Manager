@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from database import get_db
-from schemas.ingredient import IngredientCreate, IngredientUpdate, IngredientResponse, IngredientCount
+from schemas.ingredient import IngredientCreate, IngredientUpdate, IngredientResponse, IngredientCount, IngredientMergeRequest
 from services.ingredient_service import IngredientService
 from models.ingredient import IngredientTypeEnum
 from models.user import User
@@ -99,6 +99,22 @@ async def delete_ingredient(
     success = await IngredientService.delete_ingredient(db, ingredient_id)
     if not success:
         raise HTTPException(status_code=404, detail="Ingredient not found")
+
+
+@router.post("/merge", response_model=IngredientResponse)
+async def merge_ingredients(
+    body: IngredientMergeRequest,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if body.keep_id == body.delete_id:
+        raise HTTPException(status_code=400, detail="keep_id and delete_id must differ")
+    ingredient = await IngredientService.merge_ingredients(
+        db, body.keep_id, body.delete_id, body.quantity, body.unit
+    )
+    if not ingredient:
+        raise HTTPException(status_code=404, detail="One or both ingredients not found")
+    return ingredient
 
 
 @router.post("/{ingredient_id}/availability", response_model=IngredientResponse)

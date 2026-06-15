@@ -142,7 +142,7 @@ function UsersTab() {
         </label>
       </div>
 
-      <div className="background-surface rounded-lg border border-line overflow-hidden">
+      <div className="background-surface rounded-lg border border-line overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="background-canvas border-b border-line">
             <tr>
@@ -475,7 +475,7 @@ function FamiliesTab() {
           className="border border-line rounded px-3 py-1.5 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary mb-3"
         />
         {userSearch && (
-          <div className="background-surface border border-line rounded-lg overflow-hidden">
+          <div className="background-surface border border-line rounded-lg overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="background-canvas border-b border-line">
                 <tr>

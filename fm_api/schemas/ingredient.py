@@ -39,5 +39,12 @@ class IngredientResponse(IngredientBase):
     from_attributes = True
 
 
+class IngredientMergeRequest(BaseModel):
+  keep_id: int
+  delete_id: int
+  quantity: Optional[float] = Field(None, ge=0)
+  unit: Optional[UnitEnum] = None
+
+
 class IngredientCount(BaseModel):
   total: int

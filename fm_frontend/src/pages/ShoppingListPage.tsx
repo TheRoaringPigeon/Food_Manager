@@ -52,7 +52,7 @@ export default function ShoppingListPage() {
         <h1 className="text-2xl font-bold foreground-content mb-4">Shopping List</h1>
         <div className="background-surface border border-line rounded-lg p-8 text-center">
           <p className="foreground-subtle mb-4">Your cart is empty. Add recipes or ingredients to generate a shopping list.</p>
-          <div className="flex justify-center gap-3">
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
             <Link
               to="/recipes"
               className="px-4 py-2 background-primary text-white text-sm font-medium rounded hover:background-primary-hover"

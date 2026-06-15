@@ -69,6 +69,7 @@ class FMApiClientAsync:
   def convert_to_recipe(self, data: Dict[str, Any]) -> Dict[str, Any]:
     name = data.get("name") or "Untitled Recipe"
     description = data.get("description")
+    image_url = data.get("image_url")
     raw = data.get("recipeIngredient") or []
     ingredients = [v if isinstance(v, dict) else str(v).strip() for v in (raw if isinstance(raw, list) else [])]
     instructions = self._listify(data.get("recipeInstructions"))
@@ -88,8 +89,7 @@ class FMApiClientAsync:
         "servings": 1,
         "recipe_type": recipe_type,
         "tags": tags,
-        "image_url": None,
-        "is_favorite": False,
+        "image_url": image_url,
     }
 
   async def create_recipe(self, recipe: dict) -> Dict[str, Any]:

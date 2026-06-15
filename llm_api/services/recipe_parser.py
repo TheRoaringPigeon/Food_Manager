@@ -55,9 +55,22 @@ class RecipeParser:
         elif isinstance(step, str):
           instructions.append(step)
 
+      image = data.get("image")
+      if isinstance(image, dict):
+          image_url = image.get("url")
+      elif isinstance(image, list) and image:
+          first = image[0]
+          image_url = first.get("url") if isinstance(first, dict) else str(first)
+      elif isinstance(image, str):
+          image_url = image
+      else:
+          image_url = None
+
       return {
           "url": url,
           "name": data.get("name"),
+          "description": data.get("description"),
+          "image_url": image_url,
           "prepTime": iso8601_to_text(data.get("prepTime")),
           "cookTime": iso8601_to_text(data.get("cookTime")),
           "recipeCategory": data.get("recipeCategory"),

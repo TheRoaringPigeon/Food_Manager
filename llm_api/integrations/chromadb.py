@@ -18,8 +18,13 @@ def get_chroma_client():
 class ChromaRepository:
   def __init__(self, collection_name: str = "recipes"):
     self.client = get_chroma_client()
-    self.collection = self.client.get_or_create_collection(
-        name=collection_name,
+    self.collection_name = collection_name
+    # Collection is fetched lazily inside to_thread calls so a ChromaDB restart
+    # never leaves a stale UUID cached on this object.
+
+  def _get_collection(self):
+    return self.client.get_or_create_collection(
+        name=self.collection_name,
         embedding_function=embedding_fn
     )
 
@@ -39,16 +44,15 @@ class ChromaRepository:
       metadatas: list[dict] | None = None
   ):
     """Add documents to the collection."""
-    return await asyncio.to_thread(
-        self.collection.add,
-        ids=ids,
-        documents=documents,
-        metadatas=metadatas
-    )
+    def _run():
+      return self._get_collection().add(ids=ids, documents=documents, metadatas=metadatas)
+    return await asyncio.to_thread(_run)
 
   async def get(self, ids: list[str]):
     """Retrieve documents by ID."""
-    return await asyncio.to_thread(self.collection.get, ids=ids)
+    def _run():
+      return self._get_collection().get(ids=ids)
+    return await asyncio.to_thread(_run)
 
   async def query(
       self,
@@ -62,14 +66,15 @@ class ChromaRepository:
     Query the collection using text or embedding.
     Provide either `text` OR custom `query_embeddings`.
     """
-    return await asyncio.to_thread(
-        self.collection.query,
-        query_texts=[text] if text else None,
-        query_embeddings=query_embeddings,
-        n_results=n_results,
-        where=where,
-        where_document=where_document
-    )
+    def _run():
+      return self._get_collection().query(
+          query_texts=[text] if text else None,
+          query_embeddings=query_embeddings,
+          n_results=n_results,
+          where=where,
+          where_document=where_document
+      )
+    return await asyncio.to_thread(_run)
 
   async def update(
       self,
@@ -78,12 +83,9 @@ class ChromaRepository:
       metadatas: list[dict] | None = None,
   ):
     """Update documents or metadata for given IDs."""
-    return await asyncio.to_thread(
-        self.collection.update,
-        ids=ids,
-        documents=documents,
-        metadatas=metadatas
-    )
+    def _run():
+      return self._get_collection().update(ids=ids, documents=documents, metadatas=metadatas)
+    return await asyncio.to_thread(_run)
 
   async def delete(
       self,
@@ -92,21 +94,24 @@ class ChromaRepository:
       where_document: dict | None = None,
   ):
     """Delete documents by ID or filter."""
-    return await asyncio.to_thread(
-        self.collection.delete,
-        ids=ids,
-        where=where,
-        where_document=where_document
-    )
+    def _run():
+      return self._get_collection().delete(ids=ids, where=where, where_document=where_document)
+    return await asyncio.to_thread(_run)
 
   async def count(self):
     """Return the number of items in the collection."""
-    return await asyncio.to_thread(self.collection.count)
+    def _run():
+      return self._get_collection().count()
+    return await asyncio.to_thread(_run)
 
   async def peek(self, n: int = 10):
     """Preview a few items."""
-    return await asyncio.to_thread(self.collection.peek, n)
+    def _run():
+      return self._get_collection().peek(n)
+    return await asyncio.to_thread(_run)
 
   async def all(self):
     """Return all documents in the collection."""
-    return await asyncio.to_thread(self.collection.get)
+    def _run():
+      return self._get_collection().get()
+    return await asyncio.to_thread(_run)

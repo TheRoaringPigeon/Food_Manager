@@ -124,7 +124,7 @@ export default function IngredientsPage() {
         <h1 className="text-2xl font-bold foreground-content">Ingredients</h1>
         <button
           onClick={() => setShowForm(v => !v)}
-          className="px-4 py-2 background-primary text-white text-sm font-medium rounded hover:background-primary-hover"
+          className="hidden md:inline px-4 py-2 background-primary text-white text-sm font-medium rounded hover:background-primary-hover"
         >
           {showForm ? 'Cancel' : '+ Add Ingredient'}
         </button>
@@ -137,72 +137,74 @@ export default function IngredientsPage() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-6 p-4 background-surface border border-line rounded-lg space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium foreground-content mb-1">Name *</label>
+        <div className="hidden md:block">
+          <form onSubmit={handleSubmit} className="mb-6 p-4 background-surface border border-line rounded-lg space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium foreground-content mb-1">Name *</label>
+                <input
+                  required
+                  className="w-full border border-line rounded px-3 py-1.5 text-sm"
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium foreground-content mb-1">Type</label>
+                <select
+                  className="w-full border border-line rounded px-3 py-1.5 text-sm"
+                  value={form.ingredient_type}
+                  onChange={e => setForm(f => ({ ...f, ingredient_type: e.target.value as IngredientType }))}
+                >
+                  {INGREDIENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium foreground-content mb-1">Description</label>
+                <input
+                  className="w-full border border-line rounded px-3 py-1.5 text-sm"
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium foreground-content mb-1">Quantity</label>
+                <input
+                  type="number"
+                  className="w-full border border-line rounded px-3 py-1.5 text-sm"
+                  value={form.quantity ?? ''}
+                  onChange={e => setForm(f => ({ ...f, quantity: e.target.value ? Number(e.target.value) : null }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium foreground-content mb-1">Unit</label>
+                <select
+                  className="w-full border border-line rounded px-3 py-1.5 text-sm"
+                  value={form.unit ?? ''}
+                  onChange={e => setForm(f => ({ ...f, unit: e.target.value as CreateIngredientPayload['unit'] || null }))}
+                >
+                  <option value="">— none —</option>
+                  {UNIT_OPTIONS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
               <input
-                required
-                className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                type="checkbox"
+                checked={form.is_available}
+                onChange={e => setForm(f => ({ ...f, is_available: e.target.checked }))}
               />
-            </div>
-            <div>
-              <label className="block text-xs font-medium foreground-content mb-1">Type</label>
-              <select
-                className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                value={form.ingredient_type}
-                onChange={e => setForm(f => ({ ...f, ingredient_type: e.target.value as IngredientType }))}
-              >
-                {INGREDIENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-medium foreground-content mb-1">Description</label>
-              <input
-                className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium foreground-content mb-1">Quantity</label>
-              <input
-                type="number"
-                className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                value={form.quantity ?? ''}
-                onChange={e => setForm(f => ({ ...f, quantity: e.target.value ? Number(e.target.value) : null }))}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium foreground-content mb-1">Unit</label>
-              <select
-                className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                value={form.unit ?? ''}
-                onChange={e => setForm(f => ({ ...f, unit: e.target.value as CreateIngredientPayload['unit'] || null }))}
-              >
-                <option value="">— none —</option>
-                {UNIT_OPTIONS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
-              </select>
-            </div>
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.is_available}
-              onChange={e => setForm(f => ({ ...f, is_available: e.target.checked }))}
-            />
-            Available
-          </label>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-4 py-2 background-primary text-white text-sm font-medium rounded hover:background-primary-hover disabled:opacity-50"
-          >
-            {submitting ? 'Saving...' : 'Create Ingredient'}
-          </button>
-        </form>
+              Available
+            </label>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-4 py-2 background-primary text-white text-sm font-medium rounded hover:background-primary-hover disabled:opacity-50"
+            >
+              {submitting ? 'Saving...' : 'Create Ingredient'}
+            </button>
+          </form>
+        </div>
       )}
 
       {/* Filter bar */}
@@ -210,7 +212,7 @@ export default function IngredientsPage() {
         <input
           type="text"
           placeholder="Search ingredients..."
-          className="border border-line rounded px-3 py-1.5 text-sm w-52"
+          className="border border-line rounded px-3 py-1.5 text-sm w-full md:w-52"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -245,7 +247,55 @@ export default function IngredientsPage() {
         <p className="foreground-subtle text-sm">Loading...</p>
       ) : (
         <>
-          <div className="background-surface border border-line rounded-lg overflow-hidden">
+          {/* Mobile card list */}
+          <div className="md:hidden space-y-2">
+            {ingredients.length === 0 ? (
+              <div className="p-6 text-center foreground-dim text-sm">No ingredients found.</div>
+            ) : ingredients.map(ing => (
+              <div
+                key={ing.id}
+                className="background-surface border border-line rounded-lg p-3 cursor-pointer hover:background-surface-raised"
+                onClick={() => setSelectedIngredient(ing)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium foreground-content">{ing.name}</p>
+                    <p className="text-xs foreground-subtle capitalize mt-0.5">{ing.ingredient_type}</p>
+                  </div>
+                  <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${
+                    ing.is_available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                  }`}>
+                    {ing.is_available ? 'Available' : 'Out of stock'}
+                  </span>
+                </div>
+                {(ing.quantity != null || ing.unit) && (
+                  <p className="text-xs foreground-subtle mt-1">
+                    {ing.quantity != null ? `${ing.quantity} ${ing.unit}` : ing.unit}
+                  </p>
+                )}
+                <div className="flex gap-3 mt-2">
+                  <button
+                    onClick={e => { e.stopPropagation(); handleToggle(ing.id) }}
+                    className="text-xs foreground-primary hover:underline"
+                  >
+                    Toggle
+                  </button>
+                  <button
+                    onClick={e => {
+                      e.stopPropagation()
+                      ingredientIds.includes(ing.id) ? removeIngredient(ing.id) : addIngredient(ing.id)
+                    }}
+                    className={`text-xs hover:underline ${ingredientIds.includes(ing.id) ? 'foreground-primary font-medium' : 'foreground-subtle'}`}
+                  >
+                    {ingredientIds.includes(ing.id) ? 'In Cart' : 'Cart'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block background-surface border border-line rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead className="background-canvas border-b border-line">
                 <tr>
@@ -337,6 +387,10 @@ export default function IngredientsPage() {
             setIngredients(prev => prev.filter(i => i.id !== selectedIngredient.id))
             setTotal(t => t - 1)
             setSelectedIngredient(null)
+          }}
+          onMerged={() => {
+            setSelectedIngredient(null)
+            load()
           }}
         />
       )}

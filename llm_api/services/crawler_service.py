@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 SITEMAP_URL = "https://www.budgetbytes.com/post-sitemap.xml"
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-MAX_CONCURRENT = 3
+MAX_CONCURRENT = 1
 
 
 class CrawlerService:
