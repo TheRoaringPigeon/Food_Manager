@@ -131,6 +131,24 @@ class FMApiClientAsync:
     resp.raise_for_status()
     return resp.json()
 
+  async def get_all_recipes(self) -> list[dict]:
+    await self._ensure_token()
+    url = f"{self.base_url}/food-manager/api/recipes"
+    all_recipes: list[dict] = []
+    skip = 0
+    limit = 500
+    while True:
+      resp = await self.client.get(url, params={"skip": skip, "limit": limit}, headers=self._auth_header())
+      resp.raise_for_status()
+      batch = resp.json()
+      if not batch:
+        break
+      all_recipes.extend(batch)
+      if len(batch) < limit:
+        break
+      skip += limit
+    return all_recipes
+
   async def get_recipes_by_ingredients(self, ingredient_names: list[str]) -> list[dict]:
     await self._ensure_token()
     url = f"{self.base_url}/food-manager/api/recipes/by-ingredients"
