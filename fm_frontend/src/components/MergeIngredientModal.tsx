@@ -15,7 +15,6 @@ export default function MergeIngredientModal({ ingredient, onClose, onMerged }: 
   const [searchResults, setSearchResults] = useState<Ingredient[]>([])
   const [target, setTarget] = useState<Ingredient | null>(null)
   const [keepId, setKeepId] = useState<number | null>(null)
-  const [chosenSide, setChosenSide] = useState<'a' | 'b' | null>(null)
   const [merging, setMerging] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,26 +33,14 @@ export default function MergeIngredientModal({ ingredient, onClose, onMerged }: 
   const a = ingredient
   const b = target
 
-  const aHasQty = a.quantity != null
-  const bHasQty = b?.quantity != null
-  const bothHaveQty = aHasQty && bHasQty
-  const eitherHasQty = aHasQty || bHasQty
-
-  const autoSide: 'a' | 'b' | null = bothHaveQty ? null : aHasQty ? 'a' : bHasQty ? 'b' : null
-  const effectiveSide = bothHaveQty ? chosenSide : autoSide
-
   const deleteId = keepId === a.id ? b?.id : a.id
   const deleteName = keepId === a.id ? b?.name : a.name
 
-  const canSubmit =
-    keepId != null &&
-    deleteId != null &&
-    (!eitherHasQty || effectiveSide != null)
+  const canSubmit = keepId != null && deleteId != null
 
   const handleSelectTarget = (ing: Ingredient) => {
     setTarget(ing)
     setKeepId(null)
-    setChosenSide(null)
     setStep('resolve')
   }
 
@@ -61,18 +48,8 @@ export default function MergeIngredientModal({ ingredient, onClose, onMerged }: 
     if (!b || keepId == null || deleteId == null) return
     setMerging(true)
     setError(null)
-
-    const srcSide = effectiveSide === 'a' ? a : b
-    const quantity = eitherHasQty ? srcSide.quantity : null
-    const unit = eitherHasQty ? srcSide.unit : null
-
     try {
-      const survivor = await mergeIngredients({
-        keep_id: keepId,
-        delete_id: deleteId,
-        quantity,
-        unit,
-      })
+      const survivor = await mergeIngredients({ keep_id: keepId, delete_id: deleteId })
       onMerged(survivor)
     } catch (e) {
       setError(String(e))
@@ -140,9 +117,6 @@ export default function MergeIngredientModal({ ingredient, onClose, onMerged }: 
                   >
                     <p className="font-semibold text-sm foreground-content">{ing.name}</p>
                     <p className="text-xs foreground-subtle capitalize">{ing.ingredient_type}</p>
-                    {ing.quantity != null && (
-                      <p className="text-xs foreground-subtle">{ing.quantity} {ing.unit ?? ''}</p>
-                    )}
                     <button
                       type="button"
                       onClick={() => setKeepId(ing.id)}
@@ -158,26 +132,6 @@ export default function MergeIngredientModal({ ingredient, onClose, onMerged }: 
                 ))}
               </div>
 
-              {bothHaveQty && (
-                <div className="space-y-1">
-                  <p className="text-xs font-medium foreground-content">Which quantity to use?</p>
-                  {(['a', 'b'] as const).map(side => {
-                    const ing = side === 'a' ? a : b
-                    return (
-                      <label key={side} className="flex items-center gap-2 text-sm foreground-content cursor-pointer">
-                        <input
-                          type="radio"
-                          name="qty-choice"
-                          checked={chosenSide === side}
-                          onChange={() => setChosenSide(side)}
-                        />
-                        Use {side === 'a' ? `A's` : `B's`}: {ing.quantity} {ing.unit ?? ''}
-                      </label>
-                    )
-                  })}
-                </div>
-              )}
-
               {deleteName && (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
                   This will permanently delete <strong>"{deleteName}"</strong> and update all recipes that use it.
@@ -187,7 +141,7 @@ export default function MergeIngredientModal({ ingredient, onClose, onMerged }: 
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => { setStep('search'); setTarget(null); setKeepId(null); setChosenSide(null) }}
+                  onClick={() => { setStep('search'); setTarget(null); setKeepId(null) }}
                   className="px-3 py-1.5 text-sm foreground-content border border-line rounded hover:background-surface-raised"
                 >
                   ← Back

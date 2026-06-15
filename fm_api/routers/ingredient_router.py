@@ -31,7 +31,7 @@ async def get_ingredients(
     ingredient_type: Optional[IngredientTypeEnum] = None,
     is_available: Optional[bool] = None,
     search: Optional[str] = None,
-    sort_by: str = Query('name', description="name | ingredient_type | qty | status"),
+    sort_by: str = Query('name', description="name | ingredient_type | status"),
     sort_dir: str = Query('asc', description="asc | desc"),
     _: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -110,7 +110,7 @@ async def merge_ingredients(
     if body.keep_id == body.delete_id:
         raise HTTPException(status_code=400, detail="keep_id and delete_id must differ")
     ingredient = await IngredientService.merge_ingredients(
-        db, body.keep_id, body.delete_id, body.quantity, body.unit
+        db, body.keep_id, body.delete_id
     )
     if not ingredient:
         raise HTTPException(status_code=404, detail="One or both ingredients not found")

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Ingredient, IngredientType, UpdateIngredientPayload } from '../types/ingredient'
-import { INGREDIENT_TYPES, UNIT_OPTIONS } from '../types/ingredient'
+import { INGREDIENT_TYPES } from '../types/ingredient'
 import { updateIngredient, deleteIngredient } from '../api/ingredients'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -21,8 +21,6 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved, on
     name: ingredient.name,
     description: ingredient.description,
     ingredient_type: ingredient.ingredient_type,
-    quantity: ingredient.quantity,
-    unit: ingredient.unit,
     is_available: ingredient.is_available,
   })
   const [submitting, setSubmitting] = useState(false)
@@ -109,28 +107,6 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved, on
                 value={form.description ?? ''}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               />
-            </div>
-            <div>
-              <label className="block text-xs font-medium foreground-content mb-1">Quantity</label>
-              <input
-                type="number"
-                min="0"
-                step="any"
-                className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                value={form.quantity ?? ''}
-                onChange={e => setForm(f => ({ ...f, quantity: e.target.value ? Number(e.target.value) : null }))}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium foreground-content mb-1">Unit</label>
-              <select
-                className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                value={form.unit ?? ''}
-                onChange={e => setForm(f => ({ ...f, unit: e.target.value as UpdateIngredientPayload['unit'] || null }))}
-              >
-                <option value="">— none —</option>
-                {UNIT_OPTIONS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
-              </select>
             </div>
           </div>
 

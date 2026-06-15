@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react'
 import type { Ingredient, CreateIngredientPayload, IngredientType } from '../types/ingredient'
-import { INGREDIENT_TYPES, UNIT_OPTIONS } from '../types/ingredient'
+import { INGREDIENT_TYPES } from '../types/ingredient'
 import { listIngredients, countIngredients, createIngredient, toggleAvailability } from '../api/ingredients'
 import IngredientDetailModal from '../components/IngredientDetailModal'
 import { useCart } from '../context/CartContext'
 
-type SortKey = 'name' | 'ingredient_type' | 'qty' | 'status'
+type SortKey = 'name' | 'ingredient_type' | 'status'
 type SortDir = 'asc' | 'desc'
 
 const HEADERS: { label: string; key: SortKey | null }[] = [
   { label: 'Name', key: 'name' },
   { label: 'Type', key: 'ingredient_type' },
-  { label: 'Qty / Unit', key: 'qty' },
   { label: 'Status', key: 'status' },
   { label: '', key: null },
 ]
@@ -20,8 +19,6 @@ const EMPTY_FORM: CreateIngredientPayload = {
   name: '',
   description: '',
   ingredient_type: 'produce',
-  quantity: null,
-  unit: null,
   is_available: true,
 }
 
@@ -167,26 +164,6 @@ export default function IngredientsPage() {
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium foreground-content mb-1">Quantity</label>
-                <input
-                  type="number"
-                  className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                  value={form.quantity ?? ''}
-                  onChange={e => setForm(f => ({ ...f, quantity: e.target.value ? Number(e.target.value) : null }))}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium foreground-content mb-1">Unit</label>
-                <select
-                  className="w-full border border-line rounded px-3 py-1.5 text-sm"
-                  value={form.unit ?? ''}
-                  onChange={e => setForm(f => ({ ...f, unit: e.target.value as CreateIngredientPayload['unit'] || null }))}
-                >
-                  <option value="">— none —</option>
-                  {UNIT_OPTIONS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
-                </select>
-              </div>
             </div>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -268,11 +245,6 @@ export default function IngredientsPage() {
                     {ing.is_available ? 'Available' : 'Out of stock'}
                   </span>
                 </div>
-                {(ing.quantity != null || ing.unit) && (
-                  <p className="text-xs foreground-subtle mt-1">
-                    {ing.quantity != null ? `${ing.quantity} ${ing.unit}` : ing.unit}
-                  </p>
-                )}
                 <div className="flex gap-3 mt-2">
                   <button
                     onClick={e => { e.stopPropagation(); handleToggle(ing.id) }}
@@ -315,14 +287,11 @@ export default function IngredientsPage() {
               </thead>
               <tbody className="divide-y divide-divider">
                 {ingredients.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-6 text-center foreground-dim">No ingredients found.</td></tr>
+                  <tr><td colSpan={4} className="px-4 py-6 text-center foreground-dim">No ingredients found.</td></tr>
                 ) : ingredients.map(ing => (
                   <tr key={ing.id} className="hover:background-surface-raised cursor-pointer" onClick={() => setSelectedIngredient(ing)}>
                     <td className="px-4 py-2 font-medium foreground-content">{ing.name}</td>
                     <td className="px-4 py-2 foreground-subtle capitalize">{ing.ingredient_type}</td>
-                    <td className="px-4 py-2 foreground-subtle">
-                      {ing.quantity != null ? `${ing.quantity} ${ing.unit}` : ing.unit || '—'}
-                    </td>
                     <td className="px-4 py-2">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         ing.is_available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'

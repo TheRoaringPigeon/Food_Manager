@@ -138,7 +138,10 @@ def _extract_json_from_response(text: str) -> Any:
     start = text.find('{')
     end = text.rfind('}')
     if start >= 0 and end > start:
-        return json.loads(text[start:end + 1])
+        try:
+            return json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            pass
 
     raise ValueError(f"No valid JSON found in response: {text[:200]}")
 
@@ -175,12 +178,13 @@ class OllamaLLM:
 
   async def embed(self, text: str) -> list[float]:
     """Generate embeddings using the model's internal embedding capabilities."""
-    url = f"{self.api_url}/embeddings"
+    url = f"{self.api_url}/embed"
     payload = {"model": self.model, "input": text}
     resp = await self.client.post(url, json=payload)
     resp.raise_for_status()
     data = resp.json()
-    return data.get("embedding")
+    embeddings = data.get("embeddings", [[]])
+    return embeddings[0] if embeddings else []
 
   async def parse_ingredients(self, raw_ingredients: List[str]) -> List[dict]:
     """Parse ingredient strings into structured dicts using regex."""
@@ -243,31 +247,40 @@ class OllamaLLM:
           "filters": None
       }
 
-  async def recommend_recipe(self, query: str, candidates: list[dict], pantry: list[dict]) -> dict:
+  async def recommend_recipe(self, query: str, candidates: list[dict], user_ingredients: list[str]) -> dict:
     """
-    Ask Ollama to pick the best recipe from candidates given a craving and available pantry.
+    Ask Ollama to pick the best recipe from candidates given a craving query and/or
+    a list of ingredients the user has. Either field may be empty.
     Returns structured JSON with pick + reasoning + ingredient analysis.
     """
     candidates_text = "\n".join(
         f"- ID {c['id']}: {c.get('metadata', {}).get('name', 'Unknown')} | Ingredients: {c.get('metadata', {}).get('keywords', '')}"
         for c in candidates
     )
-    pantry_text = ", ".join(
-        f"{p.get('name')} ({p.get('quantity', '')} {p.get('unit', '')})"
-        for p in pantry
-    ) or "No ingredients available"
+
+    craving_line = f'The user is craving: "{query}"' if query.strip() else "The user has not described a specific craving."
+
+    if user_ingredients:
+        ingredients_text = ", ".join(user_ingredients)
+        ingredient_section = (
+            f"The user has told us they have these ingredients: {ingredients_text}\n\n"
+            "Populate have_ingredients with recipe ingredients that overlap this list, "
+            "and missing_ingredients with recipe ingredients not on the list."
+        )
+    else:
+        ingredient_section = "No specific ingredients were provided. Return have_ingredients and missing_ingredients as empty arrays."
 
     prompt = f"""You are a recipe recommendation assistant.
 
-The user is craving: "{query}"
+{craving_line}
+
+{ingredient_section}
 
 Here are 5 candidate recipes from the database:
 {candidates_text}
 
-The user currently has these ingredients available:
-{pantry_text}
-
-Pick the single best recipe for the user's craving. Consider both how well the recipe matches the craving AND which ingredients the user already has.
+Pick the single best recipe. If a craving was described, match it. If only ingredients were
+provided, pick the recipe that best uses them.
 
 Return ONLY valid JSON in exactly this format:
 {{

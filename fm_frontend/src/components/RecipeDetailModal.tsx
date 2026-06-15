@@ -191,7 +191,6 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
                                   updateRow(i, {
                                     ingredient_id: ing.id,
                                     name: ing.name,
-                                    unit: ing.unit ?? null,
                                     is_available: ing.is_available,
                                   })
                                   setOpenDropdown(null)
@@ -199,7 +198,6 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
                               >
                                 <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ing.is_available ? 'bg-green-500' : 'bg-red-500'}`} />
                                 <span className="flex-1">{ing.name}</span>
-                                {ing.unit && <span className="foreground-dim text-xs">{ing.unit}</span>}
                               </button>
                             </li>
                           ))}
