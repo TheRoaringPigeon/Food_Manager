@@ -28,6 +28,12 @@ export const changeRole = (userId: number, role: UserRole) =>
     body: JSON.stringify({ role }),
   })
 
+export const changePassword = (userId: number, currentPassword: string, newPassword: string) =>
+  apiFetch<void>(`/users/${userId}/change-password`, {
+    method: 'POST',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  })
+
 export const deactivateUser = (userId: number) =>
   apiFetch<void>(`/users/${userId}`, { method: 'DELETE' })
 

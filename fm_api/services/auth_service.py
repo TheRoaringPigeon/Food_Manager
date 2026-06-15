@@ -1,10 +1,12 @@
 import asyncio
+from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
 
 from models.user import User
 from utils.auth import verify_password, create_access_token
+from utils.password_policy import MAX_AGE_DAYS
 
 
 class AuthService:
@@ -17,6 +19,13 @@ class AuthService:
             return None
         if not await asyncio.to_thread(verify_password, password, user.hashed_password):
             return None
+
+        expiry_cutoff = datetime.utcnow() - timedelta(days=MAX_AGE_DAYS)
+        if not user.must_change_password:
+            if user.password_changed_at is None or user.password_changed_at < expiry_cutoff:
+                user.must_change_password = True
+                await db.commit()
+
         return user
 
     @staticmethod

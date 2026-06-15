@@ -3,7 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from database import get_db
-from schemas.user import UserResponse, UserCreate, AssignFamilyRequest, ChangeRoleRequest, UpdateUserPayload
+from schemas.user import (
+    UserResponse, UserCreate, AssignFamilyRequest, ChangeRoleRequest,
+    UpdateUserPayload, ChangePasswordRequest,
+)
 from services.user_service import UserService
 from services.family_service import FamilyService
 from dependencies.auth import get_current_user, require_admin
@@ -34,12 +37,15 @@ async def create_user(
     existing = await UserService.get_user_by_username(db, payload.username)
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
-    return await UserService.create_user(
-        db,
-        username=payload.username,
-        password=payload.password,
-        role=payload.role,
-    )
+    try:
+        return await UserService.create_user(
+            db,
+            username=payload.username,
+            password=payload.password,
+            role=payload.role,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -69,7 +75,32 @@ async def update_user(
         existing = await UserService.get_user_by_username(db, payload.username)
         if existing and existing.id != user_id:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
-    user = await UserService.update_user(db, user_id, username=payload.username, password=payload.password, theme=payload.theme)
+    try:
+        user = await UserService.update_user(
+            db, user_id, username=payload.username, password=payload.password, theme=payload.theme
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.post("/{user_id}/change-password", response_model=UserResponse)
+async def change_password(
+    user_id: int,
+    payload: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.id != user_id and current_user.role.value != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    try:
+        user = await UserService.change_password(
+            db, user_id, payload.current_password, payload.new_password
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

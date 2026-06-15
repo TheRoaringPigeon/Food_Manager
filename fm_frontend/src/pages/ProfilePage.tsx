@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { updateUser } from '../api/admin'
 import { useTheme, type ThemeId } from '../context/ThemeContext'
+import PasswordRequirements from '../components/PasswordRequirements'
 
 export default function ProfilePage() {
   const { user, updateUser: updateAuthUser } = useAuth()
@@ -78,16 +79,17 @@ export default function ProfilePage() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium foreground-content mb-1">New password</label>
+        <div className="flex flex-col gap-2">
+          <label className="block text-sm font-medium foreground-content">New password</label>
           <input
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            minLength={6}
+            minLength={8}
             placeholder="Leave blank to keep current"
             className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
+          {password && <PasswordRequirements password={password} />}
         </div>
 
         <div>
@@ -96,7 +98,7 @@ export default function ProfilePage() {
             type="password"
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
-            minLength={6}
+            minLength={8}
             placeholder="Leave blank to keep current"
             className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
