@@ -2,7 +2,8 @@ from pydantic import BaseModel
 
 
 class RecommendationRequest(BaseModel):
-  query: str
+  query: str = ""
+  ingredients: list[str] = []
 
 
 class RecommendationResponse(BaseModel):

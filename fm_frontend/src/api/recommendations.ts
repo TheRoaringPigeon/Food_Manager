@@ -13,11 +13,11 @@ export interface RecommendationResponse {
   cook_time: number | null
 }
 
-export async function getRecommendation(query: string): Promise<RecommendationResponse> {
+export async function getRecommendation(query: string, ingredients: string[] = []): Promise<RecommendationResponse> {
   const res = await fetch('/food-manager/llm/api/recommendations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, ingredients }),
   })
   if (!res.ok) {
     const text = await res.text()

@@ -1,15 +1,13 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
-from models.ingredient import IngredientTypeEnum, UnitEnum
+from models.ingredient import IngredientTypeEnum
 
 
 class IngredientBase(BaseModel):
   name: str = Field(..., min_length=1, max_length=255)
   description: Optional[str] = None
   ingredient_type: IngredientTypeEnum
-  quantity: Optional[float] = Field(None, ge=0)
-  unit: Optional[UnitEnum] = None
   tags: Optional[str] = None
   image_url: Optional[str] = None
   is_available: Optional[bool] = True
@@ -23,8 +21,6 @@ class IngredientUpdate(BaseModel):
   name: Optional[str] = Field(None, min_length=1, max_length=255)
   description: Optional[str] = None
   ingredient_type: Optional[IngredientTypeEnum] = None
-  quantity: Optional[float] = Field(None, ge=0)
-  unit: Optional[UnitEnum] = None
   tags: Optional[str] = None
   image_url: Optional[str] = None
   is_available: Optional[bool] = None
@@ -42,8 +38,6 @@ class IngredientResponse(IngredientBase):
 class IngredientMergeRequest(BaseModel):
   keep_id: int
   delete_id: int
-  quantity: Optional[float] = Field(None, ge=0)
-  unit: Optional[UnitEnum] = None
 
 
 class IngredientCount(BaseModel):

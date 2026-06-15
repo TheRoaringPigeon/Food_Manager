@@ -1,9 +1,23 @@
 import re
+import base64
 import httpx
+import time
 from typing import Any, Dict, List, Optional
 from constants import FM_API, FM_API_SERVICE_USERNAME, FM_API_SERVICE_PASSWORD
 from models.Recipe import RecipeTypeEnum
 import json
+
+
+def _decode_jwt_exp(token: str) -> float:
+    """Return the exp claim from a JWT without signature verification."""
+    try:
+        payload = token.split('.')[1]
+        payload += '=' * (4 - len(payload) % 4)
+        data = json.loads(base64.urlsafe_b64decode(payload))
+        return float(data.get('exp', 0))
+    except Exception:
+        return 0.0
+
 
 class FMApiClientAsync:
   """
@@ -14,9 +28,10 @@ class FMApiClientAsync:
     self.base_url = base_url.rstrip("/")
     self.client = httpx.AsyncClient(timeout=20.0)
     self._token: Optional[str] = None
+    self._token_expires_at: float = 0.0
 
   async def _ensure_token(self) -> str:
-    if self._token:
+    if self._token and time.time() < self._token_expires_at - 30:
       return self._token
     resp = await self.client.post(
       f"{self.base_url}/food-manager/api/auth/login",
@@ -24,6 +39,7 @@ class FMApiClientAsync:
     )
     resp.raise_for_status()
     self._token = resp.json()["access_token"]
+    self._token_expires_at = _decode_jwt_exp(self._token)
     return self._token
 
   def _auth_header(self) -> dict:

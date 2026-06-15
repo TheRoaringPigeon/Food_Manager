@@ -89,8 +89,6 @@ def sample_ingredient_data():
       "name": "ground beef",
       "description": "low grade meat that always seems to go bad instantly",
       "ingredient_type": "meat",
-      "quantity": 1,
-      "unit": "pound",
       "tags": "",
       "image_url": "",
       "is_available": True,

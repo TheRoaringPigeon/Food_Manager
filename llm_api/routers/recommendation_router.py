@@ -18,5 +18,5 @@ async def recommend(
     request: RecommendationRequest,
     service: RecommendationService = Depends(get_recommendation_service)
 ):
-  """Get a recipe recommendation based on a craving and current pantry"""
-  return await service.recommend(request.query)
+  """Get a recipe recommendation based on a craving and optional ingredient list"""
+  return await service.recommend(request.query, request.ingredients)

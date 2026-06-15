@@ -16,7 +16,10 @@ class RecommendationService:
     self.fm = fm_client or FMApiClientAsync()
     self.llm = llm_client or OllamaLLM()
 
-  async def recommend(self, query: str) -> dict:
+  async def recommend(self, query: str, ingredients: list[str] | None = None) -> dict:
+    if ingredients is None:
+        ingredients = []
+
     # 1. Semantic search -> 5 candidates
     chroma_results = await self.repo.query(text=query, n_results=5)
     candidates = await RecipeService.format_results(chroma_results)
@@ -34,14 +37,16 @@ class RecommendationService:
       recipes_list = await self.fm.get_recipes_by_ids(candidate_ids)
       full_recipes = {str(r["id"]): r for r in recipes_list}
 
-    # 3. Fetch available pantry ingredients from fm_api
-    pantry = await self.fm.get_available_ingredients()
-
-    # 4. Ask Ollama to pick best match + explain
-    ollama_result = await self.llm.recommend_recipe(query, candidates, pantry)
+    # 3. Ask Ollama to pick best match + explain
+    ollama_result = await self.llm.recommend_recipe(query, candidates, ingredients)
 
     # 5. Merge Ollama output with full recipe data from Postgres
+    # Normalize recipe_id: strip whitespace and coerce to int-string to match dict keys
     recipe_id = ollama_result.get("recipe_id", "")
+    try:
+        recipe_id = str(int(str(recipe_id).strip()))
+    except (ValueError, TypeError):
+        recipe_id = str(recipe_id).strip()
     full = full_recipes.get(recipe_id, {})
 
     return {
@@ -52,7 +57,10 @@ class RecommendationService:
         "missing_ingredients": ollama_result.get("missing_ingredients", []),
         "substitutions": ollama_result.get("substitutions", {}),
         "description": full.get("description"),
-        "ingredients": full.get("ingredients"),
+        "ingredients": [
+            ing["name"] if isinstance(ing, dict) else ing
+            for ing in (full.get("ingredients") or [])
+        ],
         "instructions": full.get("instructions"),
         "image_url": full.get("image_url"),
         "prep_time": full.get("prep_time"),

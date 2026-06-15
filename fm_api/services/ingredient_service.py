@@ -8,7 +8,6 @@ from typing import List, Optional
 _INGREDIENT_SORT_COLS = {
     'name': Ingredient.name,
     'ingredient_type': Ingredient.ingredient_type,
-    'qty': Ingredient.quantity,
     'status': Ingredient.is_available,
 }
 
@@ -122,8 +121,6 @@ class IngredientService:
       db: AsyncSession,
       keep_id: int,
       delete_id: int,
-      quantity: Optional[float],
-      unit,
   ) -> Optional[Ingredient]:
     if keep_id == delete_id:
       return None
@@ -153,13 +150,10 @@ class IngredientService:
       .values(ingredient_id=keep_id, name=keep.name)
     )
 
-    # Auto-fill blank fields on keep from doomed
+    # Auto-fill null fields on keep from doomed; skip intentionally-empty strings
     for field in ('description', 'tags', 'image_url'):
-      if not getattr(keep, field) and getattr(doomed, field):
+      if getattr(keep, field) is None and getattr(doomed, field) is not None:
         setattr(keep, field, getattr(doomed, field))
-
-    keep.quantity = quantity
-    keep.unit = unit
 
     await db.delete(doomed)
     await db.commit()

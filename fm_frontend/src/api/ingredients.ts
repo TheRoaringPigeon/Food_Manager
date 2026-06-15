@@ -52,8 +52,6 @@ export const deleteIngredient = (id: number) =>
 export interface IngredientMergePayload {
   keep_id: number
   delete_id: number
-  quantity?: number | null
-  unit?: string | null
 }
 
 export const mergeIngredients = (payload: IngredientMergePayload) =>

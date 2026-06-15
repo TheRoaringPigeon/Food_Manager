@@ -28,32 +28,47 @@ def _infer_ingredient_type(name: str) -> IngredientTypeEnum:
     return IngredientTypeEnum.OTHER
 
 
-async def _find_or_create_ingredient(db: AsyncSession, name: str) -> Tuple[Optional[int], str]:
-    if not name or not name.strip():
-        return None, name
+async def _batch_find_or_create_ingredients(
+    db: AsyncSession, names: list[str]
+) -> dict[str, Tuple[Optional[int], str]]:
+    """Resolve ingredient names in two DB round-trips instead of N.
+    Returns {original_name: (ingredient_id, resolved_name)}.
+    """
+    clean_map = {n: n.strip() for n in names if n and n.strip()}
+    if not clean_map:
+        return {}
 
-    clean = name.strip()
-
-    # Bidirectional containment: existing name inside incoming OR incoming inside existing name.
-    # literal(clean).ilike(concat('%', name, '%')) checks: does the existing name appear inside clean?
-    result = await db.execute(
-        select(Ingredient)
-        .where(func.length(Ingredient.name) >= 4)
-        .where(
-            literal(clean).ilike(func.concat('%', Ingredient.name, '%')) |
-            Ingredient.name.ilike(f"%{clean}%")
-        )
-        .order_by(func.length(Ingredient.name).asc())
-        .limit(1)
+    existing_result = await db.execute(
+        select(Ingredient).where(func.length(Ingredient.name) >= 4)
     )
-    match = result.scalar_one_or_none()
-    if match:
-        return match.id, match.name
+    existing = existing_result.scalars().all()
 
-    new_ingredient = Ingredient(name=clean, ingredient_type=_infer_ingredient_type(clean))
-    db.add(new_ingredient)
-    await db.flush()
-    return new_ingredient.id, clean
+    resolved: dict[str, Tuple[Optional[int], str]] = {}
+    to_create: list[tuple[str, str, Ingredient]] = []
+
+    for original, clean in clean_map.items():
+        clean_lower = clean.lower()
+        best: Optional[Ingredient] = None
+        best_len = float("inf")
+        for ing in existing:
+            if len(ing.name) < best_len and (
+                ing.name.lower() in clean_lower or clean_lower in ing.name.lower()
+            ):
+                best = ing
+                best_len = len(ing.name)
+        if best:
+            resolved[original] = (best.id, best.name)
+        else:
+            new_ing = Ingredient(name=clean, ingredient_type=_infer_ingredient_type(clean))
+            db.add(new_ing)
+            to_create.append((original, clean, new_ing))
+
+    if to_create:
+        await db.flush()
+        for original, clean, obj in to_create:
+            resolved[original] = (obj.id, clean)
+
+    return resolved
 
 
 def _serialize_ingredients(recipe: Recipe) -> List[Dict[str, Any]]:
@@ -94,6 +109,32 @@ def _ingredient_load_options():
     return selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient)
 
 
+def _apply_recipe_filters(
+    query,
+    recipe_type: Optional[RecipeTypeEnum] = None,
+    search: Optional[str] = None,
+    max_total_time: Optional[int] = None,
+):
+    if recipe_type:
+        query = query.filter(Recipe.recipe_type == recipe_type)
+    if search:
+        search_term = f"%{search}%"
+        ingredient_match = Recipe.id.in_(
+            select(RecipeIngredient.recipe_id).where(RecipeIngredient.name.ilike(search_term))
+        )
+        query = query.filter(
+            Recipe.name.ilike(search_term) |
+            Recipe.description.ilike(search_term) |
+            Recipe.tags.ilike(search_term) |
+            ingredient_match
+        )
+    if max_total_time is not None:
+        query = query.filter(
+            (func.coalesce(Recipe.prep_time, 0) + func.coalesce(Recipe.cook_time, 0)) <= max_total_time
+        )
+    return query
+
+
 async def _get_recipe_with_status(
     db: AsyncSession, recipe_id: int, family_id: Optional[int]
 ) -> Optional[Dict[str, Any]]:
@@ -131,7 +172,10 @@ async def _get_recipe_with_status(
 
 
 async def _insert_recipe_ingredients(db: AsyncSession, recipe_id: int, ingredients: list) -> None:
-    for i, ing in enumerate(ingredients):
+    parsed: list[tuple] = []
+    names_to_resolve: list[str] = []
+
+    for ing in ingredients:
         if isinstance(ing, dict):
             explicit_id = ing.get("ingredient_id")
             name = ing.get("name")
@@ -142,12 +186,17 @@ async def _insert_recipe_ingredients(db: AsyncSession, recipe_id: int, ingredien
             name = ing.name
             quantity = ing.quantity
             unit = ing.unit
+        parsed.append((explicit_id, name, quantity, unit))
+        if explicit_id is None and name:
+            names_to_resolve.append(name)
 
-        if explicit_id:
+    resolved = await _batch_find_or_create_ingredients(db, names_to_resolve)
+
+    for i, (explicit_id, name, quantity, unit) in enumerate(parsed):
+        if explicit_id is not None:
             ingredient_id, resolved_name = explicit_id, name
         else:
-            ingredient_id, resolved_name = await _find_or_create_ingredient(db, name)
-
+            ingredient_id, resolved_name = resolved.get(name, (None, name))
         db.add(RecipeIngredient(
             recipe_id=recipe_id,
             ingredient_id=ingredient_id,
@@ -215,31 +264,13 @@ class RecipeService:
                 return [_build_recipe_dict(r.Recipe, r.is_favorite, r.last_cooked) for r in rows]
             return [_build_recipe_dict(r, False, None) for r in result.scalars().all()]
 
-        if recipe_type:
-            query = query.filter(Recipe.recipe_type == recipe_type)
-
         if is_favorite is not None and family_id is not None:
             query = query.filter(func.coalesce(frs.is_favorite, False) == is_favorite)
         elif is_favorite is not None and family_id is None:
             if is_favorite:
                 query = query.filter(literal(False))
 
-        if search:
-            search_term = f"%{search}%"
-            ingredient_match = Recipe.id.in_(
-                select(RecipeIngredient.recipe_id).where(RecipeIngredient.name.ilike(search_term))
-            )
-            query = query.filter(
-                Recipe.name.ilike(search_term) |
-                Recipe.description.ilike(search_term) |
-                Recipe.tags.ilike(search_term) |
-                ingredient_match
-            )
-
-        if max_total_time is not None:
-            query = query.filter(
-                (func.coalesce(Recipe.prep_time, 0) + func.coalesce(Recipe.cook_time, 0)) <= max_total_time
-            )
+        query = _apply_recipe_filters(query, recipe_type=recipe_type, search=search, max_total_time=max_total_time)
 
         if sort_by == 'recipe_type':
             sort_col = Recipe.recipe_type
@@ -289,25 +320,7 @@ class RecipeService:
         else:
             query = select(func.count()).select_from(Recipe)
 
-        if recipe_type:
-            query = query.filter(Recipe.recipe_type == recipe_type)
-
-        if search:
-            search_term = f"%{search}%"
-            ingredient_match = Recipe.id.in_(
-                select(RecipeIngredient.recipe_id).where(RecipeIngredient.name.ilike(search_term))
-            )
-            query = query.filter(
-                Recipe.name.ilike(search_term) |
-                Recipe.description.ilike(search_term) |
-                Recipe.tags.ilike(search_term) |
-                ingredient_match
-            )
-
-        if max_total_time is not None:
-            query = query.filter(
-                (func.coalesce(Recipe.prep_time, 0) + func.coalesce(Recipe.cook_time, 0)) <= max_total_time
-            )
+        query = _apply_recipe_filters(query, recipe_type=recipe_type, search=search, max_total_time=max_total_time)
 
         result = await db.execute(query)
         return result.scalar_one()
@@ -390,9 +403,7 @@ class RecipeService:
         user_id: int,
     ) -> Optional[Dict[str, Any]]:
         recipe_result = await db.execute(
-            select(Recipe)
-            .options(selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient))
-            .filter(Recipe.id == recipe_id)
+            select(Recipe).filter(Recipe.id == recipe_id)
         )
         recipe_obj = recipe_result.scalar_one_or_none()
         if not recipe_obj:
@@ -417,21 +428,6 @@ class RecipeService:
                 last_cooked=datetime.utcnow(),
             )
             db.add(status_row)
-
-        for ri in recipe_obj.ingredients:
-            if not ri.quantity:
-                continue
-            if ri.ingredient_id and ri.ingredient:
-                inv = ri.ingredient
-            else:
-                inv_result = await db.execute(
-                    select(Ingredient).filter(func.lower(Ingredient.name) == ri.name.lower())
-                )
-                inv = inv_result.scalar_one_or_none()
-            if inv and inv.quantity is not None:
-                inv.quantity = max(0.0, inv.quantity - ri.quantity)
-                if inv.quantity == 0:
-                    inv.is_available = False
 
         await db.commit()
         return await _get_recipe_with_status(db, recipe_id, family_id)

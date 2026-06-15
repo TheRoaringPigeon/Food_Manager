@@ -142,7 +142,7 @@ class TestIngredientUpdate:
     )
     ingredient_id = create_response.json()["id"]
 
-    update_data = {"name": "Whole Wheat Flour", "quantity": 2.0}
+    update_data = {"name": "Whole Wheat Flour"}
     response = await client.put(
         f"{API_CONTEXT_PATH}/ingredients/{ingredient_id}",
         json=update_data
@@ -150,7 +150,6 @@ class TestIngredientUpdate:
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "Whole Wheat Flour"
-    assert data["quantity"] == 2.0
 
   async def test_update_nonexistent_ingredient(self, client):
     """Test updating an ingredient that doesn't exist"""
