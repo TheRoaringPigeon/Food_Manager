@@ -255,7 +255,7 @@ class OllamaLLM:
     """
     candidates_text = "\n".join(
         f"- ID {c['id']} (ingredient match: {c.get('match_count', 0)}/{len(user_ingredients)}): "
-        f"{c.get('metadata', {}).get('name', 'Unknown')} | "
+        f"{c.get('name') or c.get('metadata', {}).get('name', 'Unknown')} | "
         f"Ingredients: {c.get('metadata', {}).get('ingredients', 'unknown')}"
         for c in candidates
     )
@@ -304,17 +304,22 @@ Return ONLY valid JSON in exactly this format:
 
 Return ONLY valid JSON. No commentary."""
 
+    logger.info("recommend_recipe prompt candidates:\n%s", candidates_text)
     resp = await self.chat([{"role": "user", "content": prompt}])
     content = resp["message"]["content"].strip()
+    logger.info("recommend_recipe raw LLM response: %s", content)
     try:
       start = content.find("{")
       end = content.rfind("}") + 1
-      return json.loads(content[start:end])
-    except (json.JSONDecodeError, ValueError):
+      parsed = json.loads(content[start:end])
+      logger.info("recommend_recipe parsed result: %s", parsed)
+      return parsed
+    except (json.JSONDecodeError, ValueError) as exc:
+      logger.warning("recommend_recipe JSON parse failed (%s) — using fallback. Raw: %s", exc, content[:300])
       fallback = candidates[0] if candidates else {}
       return {
           "recipe_id": str(fallback.get("id", "")),
-          "recipe_name": fallback.get("metadata", {}).get("name", "Unknown"),
+          "recipe_name": fallback.get("name") or fallback.get("metadata", {}).get("name", "Unknown"),
           "why": "Selected as closest match.",
           "have_ingredients": [],
           "missing_ingredients": [],
