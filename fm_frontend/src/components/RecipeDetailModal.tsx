@@ -120,7 +120,7 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium foreground-content mb-1">Name *</label>
               <input
@@ -286,7 +286,7 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
             <div>Updated: {new Date(recipe.updated_at).toLocaleDateString()}</div>
           </div>
 
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex flex-wrap items-center gap-2 pt-2">
             <button
               type="submit"
               disabled={submitting}
@@ -313,7 +313,7 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
               {recipeIds.includes(recipe.id) ? '✓ In Cart' : '+ Cart'}
             </button>
             {isAdmin && (
-              <div className="ml-auto flex gap-2">
+              <div className="ml-auto flex flex-wrap gap-2">
                 {confirmingDelete ? (
                   <>
                     <span className="text-sm foreground-subtle self-center">Delete this recipe?</span>

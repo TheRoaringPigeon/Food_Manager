@@ -4,15 +4,17 @@ import { INGREDIENT_TYPES, UNIT_OPTIONS } from '../types/ingredient'
 import { updateIngredient, deleteIngredient } from '../api/ingredients'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import MergeIngredientModal from './MergeIngredientModal'
 
 interface Props {
   ingredient: Ingredient
   onClose: () => void
   onSaved: (updated: Ingredient) => void
   onDeleted: () => void
+  onMerged: (survivor: Ingredient) => void
 }
 
-export default function IngredientDetailModal({ ingredient, onClose, onSaved, onDeleted }: Props) {
+export default function IngredientDetailModal({ ingredient, onClose, onSaved, onDeleted, onMerged }: Props) {
   const { isAdmin } = useAuth()
   const { ingredientIds, addIngredient, removeIngredient } = useCart()
   const [form, setForm] = useState<UpdateIngredientPayload>({
@@ -27,6 +29,7 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved, on
   const [error, setError] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showMerge, setShowMerge] = useState(false)
 
   const handleDelete = async () => {
     setDeleting(true)
@@ -79,7 +82,7 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved, on
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium foreground-content mb-1">Name *</label>
               <input
@@ -146,7 +149,7 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved, on
             <div>Updated: {new Date(ingredient.updated_at).toLocaleDateString()}</div>
           </div>
 
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex flex-wrap items-center gap-2 pt-2">
             <button
               type="submit"
               disabled={submitting}
@@ -173,7 +176,14 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved, on
               {ingredientIds.includes(ingredient.id) ? '✓ In Cart' : '+ Cart'}
             </button>
             {isAdmin && (
-              <div className="ml-auto flex gap-2">
+              <div className="ml-auto flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMerge(true)}
+                  className="px-3 py-1.5 text-sm font-medium text-amber-600 border border-amber-300 rounded hover:bg-amber-50"
+                >
+                  Merge
+                </button>
                 {confirmingDelete ? (
                   <>
                     <span className="text-sm foreground-subtle self-center">Delete this ingredient?</span>
@@ -207,6 +217,13 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved, on
           </div>
         </form>
       </div>
+      {showMerge && (
+        <MergeIngredientModal
+          ingredient={ingredient}
+          onClose={() => setShowMerge(false)}
+          onMerged={onMerged}
+        />
+      )}
     </div>
   )
 }

@@ -44,6 +44,21 @@ _DESCRIPTORS = re.compile(
     re.IGNORECASE
 )
 
+# Group headers like "Add-ins: fruit" or "For the sauce:" are not ingredients.
+_HEADER_RE = re.compile(r'^[a-zA-Z][\w\s/\-]{0,30}:\s*\S', re.IGNORECASE)
+_HEADER_ONLY_RE = re.compile(r'^[a-zA-Z][\w\s/\-]{0,30}:\s*$', re.IGNORECASE)
+
+
+def _is_valid_ingredient_line(raw: str) -> bool:
+    s = raw.strip()
+    if not s:
+        return False
+    if _HEADER_RE.match(s) or _HEADER_ONLY_RE.match(s):
+        return False
+    if re.match(r'^-\d', s):
+        return False
+    return True
+
 
 def _parse_ingredient_regex(raw: str) -> dict:
     """Regex-based ingredient parser used as LLM fallback."""
@@ -171,7 +186,7 @@ class OllamaLLM:
     """Parse ingredient strings into structured dicts using regex."""
     if not raw_ingredients:
       return []
-    return [_parse_ingredient_regex(ing) for ing in raw_ingredients]
+    return [_parse_ingredient_regex(ing) for ing in raw_ingredients if _is_valid_ingredient_line(ing)]
 
   async def interpret_recipe_query(self, user_query: str) -> dict:
     """

@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, asc, desc, func, nullslast
 from models.ingredient import Ingredient, IngredientTypeEnum
+from models.recipe_ingredient import RecipeIngredient
 from schemas.ingredient import IngredientCreate, IngredientUpdate
 from typing import List, Optional
 
@@ -94,6 +95,13 @@ class IngredientService:
     for field, value in update_data.items():
       setattr(db_ingredient, field, value)
 
+    if "name" in update_data:
+      await db.execute(
+        update(RecipeIngredient)
+        .where(RecipeIngredient.ingredient_id == ingredient_id)
+        .values(name=update_data["name"])
+      )
+
     await db.commit()
     await db.refresh(db_ingredient)
     return db_ingredient
@@ -108,6 +116,55 @@ class IngredientService:
     await db.delete(db_ingredient)
     await db.commit()
     return True
+
+  @staticmethod
+  async def merge_ingredients(
+      db: AsyncSession,
+      keep_id: int,
+      delete_id: int,
+      quantity: Optional[float],
+      unit,
+  ) -> Optional[Ingredient]:
+    if keep_id == delete_id:
+      return None
+
+    keep_result = await db.execute(select(Ingredient).filter(Ingredient.id == keep_id))
+    keep = keep_result.scalar_one_or_none()
+    doomed_result = await db.execute(select(Ingredient).filter(Ingredient.id == delete_id))
+    doomed = doomed_result.scalar_one_or_none()
+
+    if not keep or not doomed:
+      return None
+
+    # Drop collision rows where the recipe already references keep
+    await db.execute(
+      delete(RecipeIngredient).where(
+        RecipeIngredient.ingredient_id == delete_id,
+        RecipeIngredient.recipe_id.in_(
+          select(RecipeIngredient.recipe_id).where(RecipeIngredient.ingredient_id == keep_id)
+        ),
+      )
+    )
+
+    # Re-point remaining rows to keep
+    await db.execute(
+      update(RecipeIngredient)
+      .where(RecipeIngredient.ingredient_id == delete_id)
+      .values(ingredient_id=keep_id, name=keep.name)
+    )
+
+    # Auto-fill blank fields on keep from doomed
+    for field in ('description', 'tags', 'image_url'):
+      if not getattr(keep, field) and getattr(doomed, field):
+        setattr(keep, field, getattr(doomed, field))
+
+    keep.quantity = quantity
+    keep.unit = unit
+
+    await db.delete(doomed)
+    await db.commit()
+    await db.refresh(keep)
+    return keep
 
   @staticmethod
   async def toggle_availability(db: AsyncSession, ingredient_id: int) -> Optional[Ingredient]:

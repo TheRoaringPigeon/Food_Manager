@@ -4,10 +4,56 @@ from sqlalchemy.orm import aliased, selectinload
 from models.recipe import Recipe, RecipeTypeEnum
 from models.recipe_ingredient import RecipeIngredient
 from models.family_recipe_status import FamilyRecipeStatus
-from models.ingredient import Ingredient
+from models.ingredient import Ingredient, IngredientTypeEnum
 from schemas.recipe import RecipeCreate, RecipeUpdate
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
+
+_TYPE_KEYWORDS: list[tuple[IngredientTypeEnum, list[str]]] = [
+    (IngredientTypeEnum.MEAT, ["beef", "chicken", "pork", "fish", "shrimp", "turkey", "lamb", "salmon", "tuna", "bacon", "ham", "sausage", "crab", "lobster", "anchovy"]),
+    (IngredientTypeEnum.DAIRY, ["milk", "cheese", "cream", "butter", "yogurt", "egg", "cheddar", "mozzarella", "parmesan", "ricotta", "brie", "whey"]),
+    (IngredientTypeEnum.GRAIN, ["flour", "rice", "pasta", "bread", "oat", "wheat", "corn", "grain", "noodle", "cereal", "barley", "quinoa", "tortilla", "cracker", "crumb"]),
+    (IngredientTypeEnum.SPICE, ["salt", "pepper", "spice", "cumin", "paprika", "cinnamon", "oregano", "thyme", "basil", "rosemary", "bay leaf", "clove", "nutmeg", "chili", "turmeric", "cayenne", "ginger", "vanilla"]),
+    (IngredientTypeEnum.CONDIMENT, ["sauce", "ketchup", "mustard", "mayo", "mayonnaise", "vinegar", "oil", "dressing", "syrup", "honey", "jam", "jelly", "paste", "puree", "sriracha", "soy sauce", "worcestershire"]),
+    (IngredientTypeEnum.BEVERAGE, ["juice", "water", "wine", "beer", "broth", "stock", "tea", "coffee", "ale", "cider", "spirits", "liqueur"]),
+    (IngredientTypeEnum.PRODUCE, ["onion", "garlic", "tomato", "potato", "carrot", "celery", "bell pepper", "lettuce", "spinach", "cucumber", "zucchini", "mushroom", "apple", "banana", "lemon", "lime", "orange", "berry", "avocado", "broccoli", "cabbage", "pea", "bean", "corn", "squash", "eggplant", "kale", "arugula", "asparagus"]),
+]
+
+
+def _infer_ingredient_type(name: str) -> IngredientTypeEnum:
+    lower = name.lower()
+    for ing_type, keywords in _TYPE_KEYWORDS:
+        if any(k in lower for k in keywords):
+            return ing_type
+    return IngredientTypeEnum.OTHER
+
+
+async def _find_or_create_ingredient(db: AsyncSession, name: str) -> Tuple[Optional[int], str]:
+    if not name or not name.strip():
+        return None, name
+
+    clean = name.strip()
+
+    # Bidirectional containment: existing name inside incoming OR incoming inside existing name.
+    # literal(clean).ilike(concat('%', name, '%')) checks: does the existing name appear inside clean?
+    result = await db.execute(
+        select(Ingredient)
+        .where(func.length(Ingredient.name) >= 4)
+        .where(
+            literal(clean).ilike(func.concat('%', Ingredient.name, '%')) |
+            Ingredient.name.ilike(f"%{clean}%")
+        )
+        .order_by(func.length(Ingredient.name).asc())
+        .limit(1)
+    )
+    match = result.scalar_one_or_none()
+    if match:
+        return match.id, match.name
+
+    new_ingredient = Ingredient(name=clean, ingredient_type=_infer_ingredient_type(clean))
+    db.add(new_ingredient)
+    await db.flush()
+    return new_ingredient.id, clean
 
 
 def _serialize_ingredients(recipe: Recipe) -> List[Dict[str, Any]]:
@@ -84,14 +130,30 @@ async def _get_recipe_with_status(
     return _build_recipe_dict(row.Recipe, row.is_favorite, row.last_cooked)
 
 
-def _insert_recipe_ingredients(db: AsyncSession, recipe_id: int, ingredients: list) -> None:
+async def _insert_recipe_ingredients(db: AsyncSession, recipe_id: int, ingredients: list) -> None:
     for i, ing in enumerate(ingredients):
+        if isinstance(ing, dict):
+            explicit_id = ing.get("ingredient_id")
+            name = ing.get("name")
+            quantity = ing.get("quantity")
+            unit = ing.get("unit")
+        else:
+            explicit_id = getattr(ing, "ingredient_id", None)
+            name = ing.name
+            quantity = ing.quantity
+            unit = ing.unit
+
+        if explicit_id:
+            ingredient_id, resolved_name = explicit_id, name
+        else:
+            ingredient_id, resolved_name = await _find_or_create_ingredient(db, name)
+
         db.add(RecipeIngredient(
             recipe_id=recipe_id,
-            ingredient_id=ing.get("ingredient_id") if isinstance(ing, dict) else getattr(ing, "ingredient_id", None),
-            name=ing.get("name") if isinstance(ing, dict) else ing.name,
-            quantity=ing.get("quantity") if isinstance(ing, dict) else ing.quantity,
-            unit=ing.get("unit") if isinstance(ing, dict) else ing.unit,
+            ingredient_id=ingredient_id,
+            name=resolved_name,
+            quantity=quantity,
+            unit=unit,
             sort_order=i,
         ))
 
@@ -107,7 +169,7 @@ class RecipeService:
         db.add(db_recipe)
         await db.flush()  # get db_recipe.id before inserting children
 
-        _insert_recipe_ingredients(db, db_recipe.id, ingredients_data)
+        await _insert_recipe_ingredients(db, db_recipe.id, ingredients_data)
         await db.commit()
 
         return await _get_recipe_with_status(db, db_recipe.id, None)
@@ -270,7 +332,7 @@ class RecipeService:
 
         if ingredients_data is not None:
             await db.execute(delete(RecipeIngredient).where(RecipeIngredient.recipe_id == recipe_id))
-            _insert_recipe_ingredients(db, recipe_id, ingredients_data)
+            await _insert_recipe_ingredients(db, recipe_id, ingredients_data)
 
         await db.commit()
         return await _get_recipe_with_status(db, recipe_id, family_id)
