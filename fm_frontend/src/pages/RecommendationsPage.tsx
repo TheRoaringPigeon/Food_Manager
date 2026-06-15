@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { listIngredients } from '../api/ingredients'
 import type { Ingredient } from '../types/ingredient'
-import { getRecommendation, type RecommendationResponse } from '../api/recommendations'
+import { streamRecommendation } from '../api/recommendations'
+import type { CandidateRecipe, WinnerDetails } from '../api/recommendations'
 import { useCart } from '../context/CartContext'
+import RecommendationCandidateModal from '../components/RecommendationCandidateModal'
 
 export default function RecommendationsPage() {
   const { recipeIds, addRecipe, removeRecipe } = useCart()
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<RecommendationResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const [allIngredients, setAllIngredients] = useState<Ingredient[]>([])
@@ -16,6 +17,17 @@ export default function RecommendationsPage() {
   const [pickerSearch, setPickerSearch] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
+
+  // Streaming state
+  const [messages, setMessages] = useState<string[]>([])
+  const [candidates, setCandidates] = useState<CandidateRecipe[]>([])
+  const [winnerId, setWinnerId] = useState<string | null>(null)
+  const [winnerDetails, setWinnerDetails] = useState<WinnerDetails | null>(null)
+  const [logExpanded, setLogExpanded] = useState(false)
+  const [selectedCandidate, setSelectedCandidate] = useState<CandidateRecipe | null>(null)
+
+  // Ref so the result event handler can read the latest candidates without stale closure
+  const candidatesRef = useRef<CandidateRecipe[]>([])
 
   useEffect(() => {
     listIngredients({ limit: 500, sort_by: 'name', sort_dir: 'asc' })
@@ -46,17 +58,65 @@ export default function RecommendationsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!query.trim() && selected.length === 0) return
+
     setLoading(true)
     setError(null)
-    setResult(null)
+    setMessages([])
+    setCandidates([])
+    candidatesRef.current = []
+    setWinnerId(null)
+    setWinnerDetails(null)
+    setLogExpanded(true)
+
     try {
-      setResult(await getRecommendation(query.trim(), selected))
-    } catch (e) {
-      setError(String(e))
+      await streamRecommendation(query.trim(), selected, (event) => {
+        if (event.type === 'sql_candidates') {
+          const msg = event.count > 0
+            ? `Found ${event.count} recipe${event.count !== 1 ? 's' : ''} matching your ingredients`
+            : 'No direct ingredient matches — searching semantically across all recipes'
+          setMessages(prev => [...prev, msg])
+
+        } else if (event.type === 'semantic_search') {
+          setMessages(prev => [
+            ...prev,
+            `Searching for "${event.query}" — found ${event.chroma_count} semantic match${event.chroma_count !== 1 ? 'es' : ''}`,
+          ])
+
+        } else if (event.type === 'top5') {
+          setMessages(prev => [
+            ...prev,
+            `Narrowed to ${event.candidates.length} candidates, asking the LLM to pick the best one...`,
+          ])
+          setCandidates(event.candidates)
+          candidatesRef.current = event.candidates
+
+        } else if (event.type === 'result') {
+          const winner = candidatesRef.current.find(c => c.id === event.recipe_id)
+          setMessages(prev => [
+            ...prev,
+            `Done! LLM chose: ${winner?.name ?? event.recipe_id}`,
+          ])
+          setWinnerId(event.recipe_id)
+          setWinnerDetails({
+            why: event.why,
+            have_ingredients: event.have_ingredients,
+            missing_ingredients: event.missing_ingredients,
+            substitutions: event.substitutions,
+          })
+          setLogExpanded(false)
+
+        } else if (event.type === 'error') {
+          setError(event.message)
+        }
+      })
+    } catch (err) {
+      setError(String(err))
     } finally {
       setLoading(false)
     }
   }
+
+  const hasDone = !loading && candidates.length > 0
 
   return (
     <div className="max-w-2xl">
@@ -145,103 +205,114 @@ export default function RecommendationsPage() {
       </form>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded text-sm">{error}</div>
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded text-sm mb-4">{error}</div>
       )}
 
-      {result && (
-        <div className="background-surface border border-line rounded-lg overflow-hidden">
-          <div className="p-4 border-b border-divider background-primary-soft">
-            <div className="flex items-start justify-between gap-2">
-              <h2 className="text-lg font-bold foreground-content">{result.recipe_name}</h2>
-              {result.recipe_id && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const id = Number(result.recipe_id)
-                    recipeIds.includes(id) ? removeRecipe(id) : addRecipe(id)
-                  }}
-                  className={`flex-shrink-0 px-3 py-1 text-xs font-medium border rounded ${
-                    recipeIds.includes(Number(result.recipe_id))
-                      ? 'foreground-primary border-current'
-                      : 'foreground-subtle border-line hover:background-surface-raised'
-                  }`}
-                >
-                  {recipeIds.includes(Number(result.recipe_id)) ? '✓ In Cart' : '+ Cart'}
-                </button>
+      {/* Status log — visible while loading, collapsible after done */}
+      {(loading || messages.length > 0) && (
+        <div className="background-surface border border-line rounded-lg mb-4 overflow-hidden">
+          <button
+            type="button"
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium foreground-content hover:background-surface-raised text-left"
+            onClick={() => setLogExpanded(e => !e)}
+          >
+            <span>
+              {loading
+                ? 'Thinking...'
+                : hasDone
+                  ? `Done — ${candidates.length} candidate${candidates.length !== 1 ? 's' : ''} found`
+                  : 'Processing...'}
+            </span>
+            <span className="foreground-subtle text-xs ml-2">{logExpanded ? '▾' : '▸'}</span>
+          </button>
+
+          {logExpanded && (
+            <div className="border-t border-divider px-4 py-3 space-y-2">
+              {messages.map((msg, i) => (
+                <p key={i} className="text-sm foreground-subtle flex items-start gap-2">
+                  <span className="text-green-600 flex-shrink-0 mt-0.5">✓</span>
+                  {msg}
+                </p>
+              ))}
+              {loading && (
+                <p className="text-sm foreground-dim animate-pulse flex items-start gap-2">
+                  <span className="flex-shrink-0 mt-0.5">···</span>
+                  Working...
+                </p>
               )}
             </div>
-            {result.description && (
-              <p className="foreground-subtle text-sm mt-1">{result.description}</p>
-            )}
-            <div className="flex gap-4 mt-2 text-xs foreground-subtle">
-              {result.prep_time != null && <span>Prep: {result.prep_time} min</span>}
-              {result.cook_time != null && <span>Cook: {result.cook_time} min</span>}
-            </div>
-          </div>
-
-          <div className="p-4 space-y-4">
-            <section>
-              <h3 className="text-sm font-semibold foreground-content mb-1">Why this recipe?</h3>
-              <p className="text-sm foreground-subtle">{result.why}</p>
-            </section>
-
-            {(result.have_ingredients.length > 0 || result.missing_ingredients.length > 0 || Object.keys(result.substitutions).length > 0) && (
-              <section>
-                <h3 className="text-sm font-semibold foreground-content mb-1">Ingredient match</h3>
-                {result.have_ingredients.length > 0 && (
-                  <p className="text-xs foreground-subtle mb-1">
-                    <span className="font-medium text-green-700">Have: </span>
-                    {result.have_ingredients.join(', ')}
-                  </p>
-                )}
-                {result.missing_ingredients.length > 0 && (
-                  <p className="text-xs foreground-subtle mb-1">
-                    <span className="font-medium text-red-600">Missing: </span>
-                    {result.missing_ingredients.join(', ')}
-                  </p>
-                )}
-                {Object.keys(result.substitutions).length > 0 && (
-                  <p className="text-xs foreground-subtle">
-                    <span className="font-medium foreground-content">Substitutions: </span>
-                    {Object.entries(result.substitutions).map(([k, v]) => `${k} → ${v}`).join('; ')}
-                  </p>
-                )}
-              </section>
-            )}
-
-            {result.ingredients && result.ingredients.length > 0 && (
-              <section>
-                <h3 className="text-sm font-semibold foreground-content mb-1">Ingredients</h3>
-                <ul className="text-sm foreground-subtle space-y-0.5">
-                  {result.ingredients.map((ing, i) => <li key={i}>• {ing}</li>)}
-                </ul>
-              </section>
-            )}
-
-            {result.instructions && result.instructions.length > 0 && (
-              <section>
-                <h3 className="text-sm font-semibold foreground-content mb-1">Instructions</h3>
-                <ol className="text-sm foreground-subtle space-y-1 list-decimal list-inside">
-                  {result.instructions.map((step, i) => <li key={i}>{step}</li>)}
-                </ol>
-              </section>
-            )}
-
-            {result.image_url && (
-              <section>
-                <h3 className="text-sm font-semibold foreground-content mb-1">Image</h3>
-                <a
-                  href={result.image_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs foreground-primary hover:underline break-all"
-                >
-                  {result.image_url}
-                </a>
-              </section>
-            )}
-          </div>
+          )}
         </div>
+      )}
+
+      {/* Candidate cards */}
+      {candidates.length > 0 && (
+        <div className="space-y-2">
+          {candidates.map((c, i) => {
+            const isWinner = c.id === winnerId
+            const recipeId = Number(c.id)
+            const inCart = !isNaN(recipeId) && recipeId > 0 && recipeIds.includes(recipeId)
+
+            return (
+              <div
+                key={c.id}
+                className={`background-surface border rounded-lg p-3 cursor-pointer hover:background-surface-raised transition-colors ${
+                  isWinner ? 'border-primary' : 'border-line'
+                }`}
+                onClick={() => setSelectedCandidate(c)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs foreground-subtle font-medium">#{i + 1}</span>
+                      {isWinner && (
+                        <span className="px-1.5 py-0.5 background-primary text-white text-xs rounded font-medium">
+                          LLM's Pick
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-medium foreground-content truncate">{c.name}</p>
+                    {c.description && (
+                      <p className="text-xs foreground-subtle mt-0.5 line-clamp-1">{c.description}</p>
+                    )}
+                    <div className="flex flex-wrap gap-3 mt-1.5 text-xs foreground-subtle">
+                      {c.prep_time != null && <span>Prep: {c.prep_time}min</span>}
+                      {c.cook_time != null && <span>Cook: {c.cook_time}min</span>}
+                      {selected.length > 0 && (
+                        <span>Match: {c.match_count}/{selected.length} ingredient{selected.length !== 1 ? 's' : ''}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation()
+                      inCart ? removeRecipe(recipeId) : addRecipe(recipeId)
+                    }}
+                    className={`flex-shrink-0 px-2.5 py-1 text-xs font-medium border rounded ${
+                      inCart
+                        ? 'foreground-primary border-current'
+                        : 'foreground-subtle border-line hover:background-surface-raised'
+                    }`}
+                  >
+                    {inCart ? '✓ Cart' : '+ Cart'}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {selectedCandidate && (
+        <RecommendationCandidateModal
+          candidate={selectedCandidate}
+          rank={candidates.findIndex(c => c.id === selectedCandidate.id) + 1}
+          isWinner={selectedCandidate.id === winnerId}
+          winnerDetails={winnerDetails ?? undefined}
+          onClose={() => setSelectedCandidate(null)}
+        />
       )}
     </div>
   )
