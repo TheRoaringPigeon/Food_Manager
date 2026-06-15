@@ -131,6 +131,14 @@ class FMApiClientAsync:
     resp.raise_for_status()
     return resp.json()
 
+  async def get_recipes_by_ingredients(self, ingredient_names: list[str]) -> list[dict]:
+    await self._ensure_token()
+    url = f"{self.base_url}/food-manager/api/recipes/by-ingredients"
+    params = [("names", n) for n in ingredient_names]
+    resp = await self.client.get(url, params=params, headers=self._auth_header())
+    resp.raise_for_status()
+    return resp.json()
+
   async def delete_recipe(self, recipe_id: int) -> None:
     await self._ensure_token()
     url = f"{self.base_url}/food-manager/api/recipes/{recipe_id}"
