@@ -86,6 +86,15 @@ async def count_recipes(
     return RecipeCount(total=total)
 
 
+@router.get("/by-ingredients")
+async def get_recipes_by_ingredients(
+    names: List[str] = Query(..., description="Ingredient names to match (repeat param for multiple)"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await RecipeService.get_recipes_by_ingredients(db, names)
+
+
 @router.get("/{recipe_id}", response_model=RecipeResponse)
 async def get_recipe(
     recipe_id: int,

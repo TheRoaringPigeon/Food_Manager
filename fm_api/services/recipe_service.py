@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, asc, desc, func, literal, null, nullslast, delete
+from sqlalchemy import select, asc, desc, func, literal, null, nullslast, delete, case
 from sqlalchemy.orm import aliased, selectinload
 from models.recipe import Recipe, RecipeTypeEnum
 from models.recipe_ingredient import RecipeIngredient
@@ -431,6 +431,41 @@ class RecipeService:
 
         await db.commit()
         return await _get_recipe_with_status(db, recipe_id, family_id)
+
+    @staticmethod
+    async def get_recipes_by_ingredients(
+        db: AsyncSession, ingredient_names: list[str]
+    ) -> list[dict]:
+        if not ingredient_names:
+            return []
+
+        cases = []
+        for name in ingredient_names:
+            exists_sub = (
+                select(1)
+                .select_from(RecipeIngredient)
+                .where(
+                    (RecipeIngredient.recipe_id == Recipe.id) &
+                    RecipeIngredient.name.ilike(f"%{name}%")
+                )
+                .exists()
+            )
+            cases.append(case((exists_sub, 1), else_=0))
+
+        match_count = cases[0]
+        for c in cases[1:]:
+            match_count = match_count + c
+
+        query = (
+            select(Recipe.id, Recipe.name, match_count.label("match_count"))
+            .where(match_count > 0)
+            .order_by(desc(match_count))
+            .limit(20)
+        )
+
+        result = await db.execute(query)
+        rows = result.all()
+        return [{"id": row.id, "name": row.name, "match_count": row.match_count} for row in rows]
 
     @staticmethod
     async def get_recently_cooked(

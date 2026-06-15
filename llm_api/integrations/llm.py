@@ -254,7 +254,9 @@ class OllamaLLM:
     Returns structured JSON with pick + reasoning + ingredient analysis.
     """
     candidates_text = "\n".join(
-        f"- ID {c['id']}: {c.get('metadata', {}).get('name', 'Unknown')} | Ingredients: {c.get('metadata', {}).get('keywords', '')}"
+        f"- ID {c['id']} (ingredient match: {c.get('match_count', 0)}/{len(user_ingredients)}): "
+        f"{c.get('metadata', {}).get('name', 'Unknown')} | "
+        f"Ingredients: {c.get('metadata', {}).get('ingredients', 'unknown')}"
         for c in candidates
     )
 
@@ -267,15 +269,23 @@ class OllamaLLM:
             "Populate have_ingredients with recipe ingredients that overlap this list, "
             "and missing_ingredients with recipe ingredients not on the list."
         )
+        priority_section = (
+            "\nThe candidates are pre-ranked by ingredient match quality — candidates listed first "
+            "use more of the user's ingredients. When ingredients are provided, STRONGLY prefer "
+            "candidates with higher match counts. A recipe with zero matching ingredients should "
+            "only be chosen if every other option is a poor craving match AND no ingredient-matching "
+            "recipe is reasonable.\n"
+        )
     else:
         ingredient_section = "No specific ingredients were provided. Return have_ingredients and missing_ingredients as empty arrays."
+        priority_section = ""
 
     prompt = f"""You are a recipe recommendation assistant.
 
 {craving_line}
 
 {ingredient_section}
-
+{priority_section}
 Here are 5 candidate recipes from the database:
 {candidates_text}
 
@@ -366,9 +376,9 @@ Return ONLY valid JSON. No commentary."""
     resp = await self.chat([{"role": "user", "content": prompt}])
     content = resp["message"]["content"].strip()
     try:
-      return json.loads(content)
+      metadata = json.loads(content)
     except json.JSONDecodeError:
-      return {
+      metadata = {
           "name": recipe.get("name", "Untitled Recipe"),
           "category": ", ".join(recipe.get("recipeCategory", []) or []),
           "cuisine": ", ".join(recipe.get("recipeCuisine", []) or []),
@@ -377,3 +387,7 @@ Return ONLY valid JSON. No commentary."""
           "cookTimeMinutes": 0,
           "numIngredients": len(recipe.get("recipeIngredient", []) or []),
       }
+    raw = recipe.get("recipeIngredient", []) or []
+    names = [_parse_ingredient_regex(r)["name"] for r in raw if _is_valid_ingredient_line(r)]
+    metadata["ingredients"] = ", ".join(names)
+    return metadata
