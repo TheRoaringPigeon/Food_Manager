@@ -1,3 +1,4 @@
+import json
 from integrations.chromadb import ChromaRepository
 from integrations.fm_api import FMApiClientAsync
 from integrations.llm import OllamaLLM
@@ -5,6 +6,10 @@ from services.recipe_service import RecipeService
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _sse(event_type: str, data: dict) -> str:
+    return f"data: {json.dumps({'type': event_type, **data})}\n\n"
 
 
 def _build_scored_pool(
@@ -182,3 +187,97 @@ class RecommendationService:
             "prep_time": full.get("prep_time"),
             "cook_time": full.get("cook_time"),
         }
+
+    async def recommend_stream(self, query: str, ingredients: list[str] | None = None):
+        """Async generator that yields SSE-formatted events as the pipeline progresses."""
+        if ingredients is None:
+            ingredients = []
+
+        try:
+            # Step 1: SQL ingredient filter
+            sql_candidates = []
+            if ingredients:
+                sql_candidates = await self.fm.get_recipes_by_ingredients(ingredients)
+
+            yield _sse("sql_candidates", {
+                "count": len(sql_candidates),
+                "names": [c.get("name", "") for c in sql_candidates],
+            })
+
+            # Step 2: ChromaDB semantic search
+            enriched_query = f"{query} {' '.join(ingredients)}".strip() if ingredients else query
+            chroma_results = await self.repo.query(text=enriched_query, n_results=10)
+            chroma_candidates = await RecipeService.format_results(chroma_results)
+
+            yield _sse("semantic_search", {
+                "query": enriched_query,
+                "chroma_count": len(chroma_candidates),
+            })
+
+            # Step 3: Merge and score
+            pool = _build_scored_pool(sql_candidates, chroma_candidates, ingredients)
+            top5 = sorted(pool.values(), key=lambda x: x["score"], reverse=True)[:5]
+
+            if not top5:
+                yield _sse("error", {"message": "No recipes found."})
+                return
+
+            # Step 4: Fetch full recipe data from fm_api
+            top_ids = [int(c["id"]) for c in top5]
+            recipes_list = await self.fm.get_recipes_by_ids(top_ids)
+            full_recipes = {str(r["id"]): r for r in recipes_list}
+
+            # Step 4.5: Enrich candidates with authoritative name + ingredients
+            for c in top5:
+                full = full_recipes.get(c["id"], {})
+                if full:
+                    c["name"] = full.get("name") or c["name"]
+                    ing_list = full.get("ingredients") or []
+                    c["metadata"]["ingredients"] = ", ".join(
+                        ing["name"] if isinstance(ing, dict) else str(ing)
+                        for ing in ing_list
+                    )
+
+            # Build the top5 payload for the frontend (full recipe detail per candidate)
+            top5_payload = []
+            for c in top5:
+                full = full_recipes.get(c["id"], {})
+                ing_list = full.get("ingredients") or []
+                top5_payload.append({
+                    "id": c["id"],
+                    "name": c["name"],
+                    "score": round(c["score"], 3),
+                    "match_count": c["match_count"],
+                    "description": full.get("description"),
+                    "prep_time": full.get("prep_time"),
+                    "cook_time": full.get("cook_time"),
+                    "ingredients": [
+                        ing["name"] if isinstance(ing, dict) else ing
+                        for ing in ing_list
+                    ],
+                    "instructions": full.get("instructions"),
+                    "image_url": full.get("image_url"),
+                })
+
+            yield _sse("top5", {"candidates": top5_payload})
+
+            # Step 5: LLM picks the best candidate
+            ollama_result = await self.llm.recommend_recipe(query, top5, ingredients)
+
+            recipe_id = ollama_result.get("recipe_id", "")
+            try:
+                recipe_id = str(int(str(recipe_id).strip()))
+            except (ValueError, TypeError):
+                recipe_id = str(recipe_id).strip()
+
+            yield _sse("result", {
+                "recipe_id": recipe_id,
+                "why": ollama_result.get("why", ""),
+                "have_ingredients": ollama_result.get("have_ingredients", []),
+                "missing_ingredients": ollama_result.get("missing_ingredients", []),
+                "substitutions": ollama_result.get("substitutions", {}),
+            })
+
+        except Exception as exc:
+            logger.exception("Error in recommend_stream")
+            yield _sse("error", {"message": str(exc)})
