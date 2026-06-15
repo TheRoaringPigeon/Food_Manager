@@ -11,6 +11,8 @@ class UserResponse(BaseModel):
     family_id: Optional[int] = None
     is_active: bool
     theme: str = 'indigo'
+    must_change_password: bool = False
+    password_changed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -20,7 +22,7 @@ class UserResponse(BaseModel):
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=100)
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8)
     role: Optional[UserRoleEnum] = UserRoleEnum.STANDARD
 
 
@@ -31,7 +33,7 @@ class LoginRequest(BaseModel):
 
 class SignupRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=100)
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8)
 
 
 class TokenResponse(BaseModel):
@@ -50,5 +52,10 @@ class ChangeRoleRequest(BaseModel):
 
 class UpdateUserPayload(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=100)
-    password: Optional[str] = Field(None, min_length=6)
+    password: Optional[str] = Field(None, min_length=8)
     theme: Optional[str] = Field(None, max_length=50)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)

@@ -20,6 +20,8 @@ class User(Base):
     family_id = Column(Integer, ForeignKey("families.id", ondelete="SET NULL"), nullable=True, index=True)
     is_active = Column(Boolean, nullable=False, default=True)
     theme = Column(String(50), nullable=False, default='indigo')
+    password_changed_at = Column(DateTime, nullable=True)
+    must_change_password = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

@@ -19,8 +19,9 @@ async def seed_defaults():
             admin = await UserService.create_user(
                 db,
                 username="Admin",
-                password="Admin",
+                password="Admin@123",
                 role=UserRoleEnum.ADMIN,
+                must_change_password=True,
             )
             logger.info("Seeded Admin user")
 

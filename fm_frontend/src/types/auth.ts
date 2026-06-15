@@ -6,6 +6,7 @@ export interface AuthUser {
   role: UserRole
   family_id: number | null
   theme?: string
+  must_change_password?: boolean
 }
 
 export interface TokenResponse {

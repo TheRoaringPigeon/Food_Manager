@@ -36,12 +36,15 @@ async def signup(request: SignupRequest, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_409_CONFLICT,
             detail="Username already taken",
         )
-    user = await UserService.create_user(
-        db,
-        username=request.username,
-        password=request.password,
-        role=UserRoleEnum.STANDARD,
-    )
+    try:
+        user = await UserService.create_user(
+            db,
+            username=request.username,
+            password=request.password,
+            role=UserRoleEnum.STANDARD,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     token = AuthService.create_token_for_user(user)
     return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
 

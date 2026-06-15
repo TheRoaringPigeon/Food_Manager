@@ -13,6 +13,7 @@ import RecommendationsPage from './pages/RecommendationsPage'
 import ShoppingListPage from './pages/ShoppingListPage'
 import AdminPage from './pages/AdminPage'
 import ProfilePage from './pages/ProfilePage'
+import ForceChangePasswordPage from './pages/ForceChangePasswordPage'
 
 function ThemeSync() {
   const { user } = useAuth()
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="/signup" element={<SignupPage />} />
 
               <Route element={<ProtectedRoute />}>
+                <Route path="/change-password" element={<ForceChangePasswordPage />} />
                 <Route path="/" element={<Layout />}>
                   <Route index element={<Navigate to="/ingredients" replace />} />
                   <Route path="ingredients" element={<IngredientsPage />} />
