@@ -20,6 +20,8 @@ services:
       # - CRAWL_LIMIT=5
       - FM_API_SERVICE_USERNAME=Admin
       - FM_API_SERVICE_PASSWORD=Admin@123
+      - LAMBDA_IDENTIFY_URL=${LAMBDA_IDENTIFY_URL}
+      - LAMBDA_API_KEY=${LAMBDA_API_KEY}
     env_file:
       - .env
     depends_on:

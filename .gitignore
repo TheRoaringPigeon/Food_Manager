@@ -3,3 +3,4 @@ __pycache__
 .claude/plans
 nul
 node_modules
+.aws-sam

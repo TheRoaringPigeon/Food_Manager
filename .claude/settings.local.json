@@ -11,7 +11,10 @@
       "PowerShell(docker restart llm_api *)",
       "Bash(docker exec postgres *)",
       "Bash(docker exec llm_api *)",
-      "Bash(xargs grep -l \"TODO\\\\|FIXME\\\\|XXX\\\\|BUG\")"
+      "Bash(xargs grep -l \"TODO\\\\|FIXME\\\\|XXX\\\\|BUG\")",
+      "PowerShell(aws cloudformation describe-stacks *)",
+      "PowerShell(aws cloudformation describe-stack-resources *)",
+      "PowerShell(aws bedrock list-inference-profiles *)"
     ],
     "deny": [
       "Read(.env)",
