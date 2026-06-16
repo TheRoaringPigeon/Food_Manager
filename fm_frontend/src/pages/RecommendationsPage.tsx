@@ -3,8 +3,10 @@ import { listIngredients } from '../api/ingredients'
 import type { Ingredient } from '../types/ingredient'
 import { streamRecommendation } from '../api/recommendations'
 import type { CandidateRecipe, WinnerDetails } from '../api/recommendations'
+import { identifyIngredients } from '../api/ingredient_vision'
 import { useCart } from '../context/CartContext'
 import RecommendationCandidateModal from '../components/RecommendationCandidateModal'
+import IngredientScanModal from '../components/IngredientScanModal'
 
 export default function RecommendationsPage() {
   const { recipeIds, addRecipe, removeRecipe } = useCart()
@@ -28,6 +30,42 @@ export default function RecommendationsPage() {
 
   // Ref so the result event handler can read the latest candidates without stale closure
   const candidatesRef = useRef<CandidateRecipe[]>([])
+
+  // Ingredient scan state
+  const scanInputRef = useRef<HTMLInputElement>(null)
+  const [scanOpen, setScanOpen] = useState(false)
+  const [scanLoading, setScanLoading] = useState(false)
+  const [scanIngredients, setScanIngredients] = useState<string[]>([])
+  const [scanError, setScanError] = useState<string | null>(null)
+
+  const handleScanFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setScanIngredients([])
+    setScanError(null)
+    setScanLoading(true)
+    setScanOpen(true)
+    try {
+      const result = await identifyIngredients(file)
+      setScanIngredients(result)
+    } catch (err) {
+      setScanError(String(err))
+    } finally {
+      setScanLoading(false)
+    }
+  }
+
+  const handleScanConfirm = (names: string[]) => {
+    setSelected(prev => {
+      const merged = [...prev]
+      for (const n of names) {
+        if (!merged.includes(n)) merged.push(n)
+      }
+      return merged
+    })
+    setScanOpen(false)
+  }
 
   useEffect(() => {
     listIngredients({ limit: 500, sort_by: 'name', sort_dir: 'asc' })
@@ -159,13 +197,31 @@ export default function RecommendationsPage() {
         )}
 
         <div className="relative" ref={pickerRef}>
-          <input
-            className="w-full border border-line rounded px-3 py-2 text-sm"
-            placeholder="Search ingredients..."
-            value={pickerSearch}
-            onChange={e => { setPickerSearch(e.target.value); setPickerOpen(true) }}
-            onFocus={() => setPickerOpen(true)}
-          />
+          <div className="flex gap-2">
+            <input
+              className="flex-1 border border-line rounded px-3 py-2 text-sm"
+              placeholder="Search ingredients..."
+              value={pickerSearch}
+              onChange={e => { setPickerSearch(e.target.value); setPickerOpen(true) }}
+              onFocus={() => setPickerOpen(true)}
+            />
+            <button
+              type="button"
+              title="Scan ingredients from photo"
+              onClick={() => scanInputRef.current?.click()}
+              className="px-3 py-2 border border-line rounded text-sm foreground-subtle hover:background-surface-raised flex-shrink-0"
+            >
+              📷
+            </button>
+            <input
+              ref={scanInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleScanFile}
+            />
+          </div>
           {pickerOpen && filteredIngredients.length > 0 && (
             <ul className="absolute z-10 w-full mt-1 background-surface border border-line rounded shadow-md max-h-48 overflow-y-auto text-sm">
               {filteredIngredients.slice(0, 30).map(ing => (
@@ -312,6 +368,16 @@ export default function RecommendationsPage() {
           isWinner={selectedCandidate.id === winnerId}
           winnerDetails={winnerDetails ?? undefined}
           onClose={() => setSelectedCandidate(null)}
+        />
+      )}
+
+      {scanOpen && (
+        <IngredientScanModal
+          loading={scanLoading}
+          ingredients={scanIngredients}
+          error={scanError}
+          onConfirm={handleScanConfirm}
+          onClose={() => setScanOpen(false)}
         />
       )}
     </div>

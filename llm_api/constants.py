@@ -50,6 +50,10 @@ TAG_METADATA = [
     {
       "name": "recommendations",
       "description": "AI-powered recipe recommendations based on craving and pantry."
+    },
+    {
+      "name": "ingredients",
+      "description": "Ingredient identification from images via Bedrock vision."
     }
 ]
 
@@ -62,3 +66,6 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "dolphin-mistral:7b")
 FM_API = os.getenv("FM_API", "http://localhost:5001")
 FM_API_SERVICE_USERNAME = os.getenv("FM_API_SERVICE_USERNAME", "Admin")
 FM_API_SERVICE_PASSWORD = os.getenv("FM_API_SERVICE_PASSWORD", "Admin")
+
+LAMBDA_IDENTIFY_URL = os.getenv("LAMBDA_IDENTIFY_URL", "")
+LAMBDA_API_KEY = os.getenv("LAMBDA_API_KEY", "")
