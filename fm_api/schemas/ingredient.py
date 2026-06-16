@@ -24,10 +24,14 @@ class IngredientUpdate(BaseModel):
   tags: Optional[str] = None
   image_url: Optional[str] = None
   is_available: Optional[bool] = None
+  calories_per_100g: Optional[float] = None
+  usda_fdc_id: Optional[str] = None
 
 
 class IngredientResponse(IngredientBase):
   id: int
+  calories_per_100g: Optional[float] = None
+  usda_fdc_id: Optional[str] = None
   created_at: datetime
   updated_at: datetime
 
