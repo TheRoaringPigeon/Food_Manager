@@ -34,6 +34,8 @@ class ChromaRepository:
       return {k: self.process_json_for_vector_db(v) for k, v in data.items()}
     elif isinstance(data, list):
       return ", ".join(str(item) for item in data)
+    elif data is None:
+      return ""
     else:
       return data
 

@@ -1,6 +1,24 @@
 import re
 
 
+def iso8601_to_minutes(duration: str | None) -> int | None:
+  """Convert ISO 8601 duration (PT1H30M) to total minutes as an integer."""
+  if not duration or not duration.startswith("P"):
+    return None
+  time_part = duration[1:]
+  hours = minutes = 0
+  if "T" in time_part:
+    _, time_part = time_part.split("T")
+  hours_match = re.search(r"(\d+)H", time_part)
+  minutes_match = re.search(r"(\d+)M", time_part)
+  if hours_match:
+    hours = int(hours_match.group(1))
+  if minutes_match:
+    minutes = int(minutes_match.group(1))
+  total = hours * 60 + minutes
+  return total if total > 0 else None
+
+
 def iso8601_to_text(duration):
   """Convert ISO 8601 duration (PT1H30M) to human-readable string."""
   if not duration or not duration.startswith("P"):

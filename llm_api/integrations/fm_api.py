@@ -86,13 +86,15 @@ class FMApiClientAsync:
     name = data.get("name") or "Untitled Recipe"
     description = data.get("description")
     image_url = data.get("image_url")
-    raw = data.get("recipeIngredient") or []
+    raw = data.get("ingredients_raw") or []
     ingredients = [v if isinstance(v, dict) else str(v).strip() for v in (raw if isinstance(raw, list) else [])]
-    instructions = self._listify(data.get("recipeInstructions"))
+    instructions = data.get("instructions") or []
     tags = data.get("keywords")
-    prep_time = self._time_to_minutes(data.get("prepTime"))
-    cook_time = self._time_to_minutes(data.get("cookTime"))
-    category_list = self._listify(data.get("recipeCategory"))
+    prep_time = data.get("prep_time_minutes")
+    cook_time = data.get("cook_time_minutes")
+    category_list = data.get("category") or []
+    if isinstance(category_list, str):
+      category_list = [c.strip() for c in category_list.split(",") if c.strip()]
     recipe_type = self._find_recipe_type(category_list) if category_list else RecipeTypeEnum.OTHER
 
     return {

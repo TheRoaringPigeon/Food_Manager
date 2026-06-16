@@ -17,9 +17,9 @@ services:
       - CHROMA_PORT=8000
       - OLLAMA_HOST=http://fm-llm:11434
       - FM_API=http://fm_api:5001
-      # - CRAWL_LIMIT=10
+      # - CRAWL_LIMIT=5
       - FM_API_SERVICE_USERNAME=Admin
-      - FM_API_SERVICE_PASSWORD=Admin
+      - FM_API_SERVICE_PASSWORD=Admin@123
     env_file:
       - .env
     depends_on:
