@@ -109,6 +109,17 @@ def _parse_ingredient_regex(raw: str) -> dict:
     return {"name": cleaned or raw.strip().lower(), "quantity": quantity, "unit": unit}
 
 
+def _to_int(llm_value: Any, fallback: Any = 0) -> int:
+    """Coerce an LLM-returned value to a non-negative int, using fallback if unusable."""
+    for v in (llm_value, fallback):
+        try:
+            result = int(float(str(v)))
+            return max(0, result)
+        except (TypeError, ValueError):
+            pass
+    return 0
+
+
 def _extract_json_from_response(text: str) -> Any:
     """Extract JSON from an LLM response that may contain markdown or extra text."""
     text = text.strip()
@@ -240,8 +251,8 @@ class OllamaLLM:
     resp = await self.chat([{"role": "user", "content": prompt}])
     content = resp["message"]["content"].strip()
     try:
-      return json.loads(content)
-    except json.JSONDecodeError:
+      return _extract_json_from_response(content)
+    except (json.JSONDecodeError, ValueError):
       return {
           "semantic_query": user_query,
           "filters": None
@@ -309,9 +320,7 @@ Return ONLY valid JSON. No commentary."""
     content = resp["message"]["content"].strip()
     logger.info("recommend_recipe raw LLM response: %s", content)
     try:
-      start = content.find("{")
-      end = content.rfind("}") + 1
-      parsed = json.loads(content[start:end])
+      parsed = _extract_json_from_response(content)
       logger.info("recommend_recipe parsed result: %s", parsed)
       return parsed
     except (json.JSONDecodeError, ValueError) as exc:
@@ -349,13 +358,18 @@ Return ONLY valid JSON. No commentary."""
   """
 
     resp = await self.chat([{"role": "user", "content": prompt}])
-    return resp["message"]["content"].strip()
+    content = resp["message"]["content"].strip()
+    # Strip think blocks so they don't pollute the embedding document.
+    content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+    return content
 
   async def build_metadata(self, recipe: dict) -> dict:
     """
     Ask the LLM to build a metadata dictionary for vector storage.
     The LLM must return only valid JSON.
     """
+    # Strip source keywords so the LLM derives them from recipe content rather than echoing them.
+    recipe_for_prompt = {k: v for k, v in recipe.items() if k != "keywords"}
     prompt = f"""
   You are a metadata normalizer for recipe storage.
 
@@ -364,35 +378,47 @@ Return ONLY valid JSON. No commentary."""
   - "name": string
   - "category": string (comma-separated if multiple)
   - "cuisine": string (comma-separated if multiple)
-  - "keywords": string
+  - "keywords": string — Generate 5-8 descriptive, comma-separated keywords derived from the recipe name, main ingredients, cooking method, cuisine, and dietary qualities (e.g. "quick, vegetarian, pasta, one-pot, Italian, weeknight dinner"). Do NOT just repeat the recipe name. Do NOT return null or an empty string.
   - "prepTimeMinutes": integer (total minutes, 0 if missing)
   - "cookTimeMinutes": integer (total minutes, 0 if missing)
   - "numIngredients": integer
 
   Rules:
   - Convert ISO8601 durations like "PT30M" into minutes.
-  - If a field is missing, choose a sensible default.
+  - If a field is missing, derive it from context or choose a sensible default.
   - Output ONLY valid JSON. No commentary.
 
   Recipe data:
-  {recipe}
+  {recipe_for_prompt}
   """
 
     resp = await self.chat([{"role": "user", "content": prompt}])
     content = resp["message"]["content"].strip()
     try:
-      metadata = json.loads(content)
-    except json.JSONDecodeError:
+      metadata = _extract_json_from_response(content)
+    except (json.JSONDecodeError, ValueError):
+      category = recipe.get("category", []) or []
       metadata = {
           "name": recipe.get("name", "Untitled Recipe"),
-          "category": ", ".join(recipe.get("recipeCategory", []) or []),
-          "cuisine": ", ".join(recipe.get("recipeCuisine", []) or []),
-          "keywords": recipe.get("keywords"),
-          "prepTimeMinutes": 0,
-          "cookTimeMinutes": 0,
-          "numIngredients": len(recipe.get("recipeIngredient", []) or []),
+          "category": ", ".join(category) if isinstance(category, list) else category,
+          "cuisine": recipe.get("cuisine") or "",
+          "keywords": recipe.get("keywords") or "",
+          "prepTimeMinutes": recipe.get("prep_time_minutes") or 0,
+          "cookTimeMinutes": recipe.get("cook_time_minutes") or 0,
+          "numIngredients": len(recipe.get("ingredients_raw", []) or []),
       }
-    raw = recipe.get("recipeIngredient", []) or []
+
+    # Coerce types — LLM may return null or wrong types regardless of parse path.
+    category = metadata.get("category") or (", ".join(recipe.get("category") or []))
+    metadata["name"] = str(metadata.get("name") or recipe.get("name") or "Untitled Recipe")
+    metadata["category"] = category if isinstance(category, str) else ", ".join(category)
+    metadata["cuisine"] = str(metadata.get("cuisine") or recipe.get("cuisine") or "")
+    metadata["keywords"] = str(metadata.get("keywords") or "")
+    metadata["prepTimeMinutes"] = _to_int(metadata.get("prepTimeMinutes"), recipe.get("prep_time_minutes"))
+    metadata["cookTimeMinutes"] = _to_int(metadata.get("cookTimeMinutes"), recipe.get("cook_time_minutes"))
+    metadata["numIngredients"] = _to_int(metadata.get("numIngredients"), len(recipe.get("ingredients_raw") or []))
+
+    raw = recipe.get("ingredients_raw", []) or []
     names = [_parse_ingredient_regex(r)["name"] for r in raw if _is_valid_ingredient_line(r)]
     metadata["ingredients"] = ", ".join(names)
     return metadata

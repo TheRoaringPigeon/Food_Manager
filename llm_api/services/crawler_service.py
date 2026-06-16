@@ -4,46 +4,33 @@ from models.Crawler import CrawlStatus
 from schemas.Crawler import StatusResponse
 from datetime import datetime
 import asyncio
-import os
 import aiohttp
 from typing import List
 from database import AsyncSessionLocal
 from sqlalchemy import select
 from models.Crawler import CrawlLock
 from utils.logger import get_logger
-from services.sitemap_service import SitemapService
-from services.recipe_parser import RecipeParser
+from adapters.base import SiteRegistry, site_registry
 from services.recipe_persistence import RecipePersistence
 
 logger = get_logger(__name__)
 
-# === SETTINGS ===
-SITEMAP_URL = "https://www.budgetbytes.com/post-sitemap.xml"
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-MAX_CONCURRENT = 1
+_HTTP_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+}
 
 
 class CrawlerService:
   """Orchestrates the recipe crawling process."""
 
-  def __init__(self, app: FastAPI):
-    """
-    Initialize the crawler service.
-
-    Args:
-        app: FastAPI application instance (for state management)
-    """
+  def __init__(self, app: FastAPI, registry: SiteRegistry = None):
     self.app = app
+    self.registry = registry or site_registry
     self.persistence = RecipePersistence()
 
   async def start_crawl(self):
-    """
-    Start the crawl process.
-
-    Returns:
-        Dictionary with status message and current state
-    """
     if self.app.state.crawler.status == CrawlStatus.RUNNING:
       return {"message": "Crawl already in progress", "status": "running"}
 
@@ -57,12 +44,6 @@ class CrawlerService:
     return {"message": "Crawl started successfully", "status": "running"}
 
   async def check_crawl_status(self):
-    """
-    Check the current status of the crawler.
-
-    Returns:
-        StatusResponse with current crawler state
-    """
     duration = None
     if self.app.state.crawler.start_time:
       end = self.app.state.crawler.end_time or datetime.now()
@@ -84,7 +65,6 @@ class CrawlerService:
     )
 
   def _reset_crawler_state(self):
-    """Reset crawler state to initial values."""
     self.app.state.crawler.status = CrawlStatus.RUNNING
     self.app.state.crawler.processed_urls = 0
     self.app.state.crawler.success_count = 0
@@ -94,26 +74,38 @@ class CrawlerService:
     self.app.state.crawler.error_message = None
 
   async def _run_crawler(self):
-    """Main function to run crawler in background."""
+    """Iterate registered adapters sequentially, crawling each site's recipes."""
     try:
-      all_recipe_urls = await SitemapService.get_recipe_urls_from_sitemap(
-          SITEMAP_URL,
-          url_filter="budgetbytes.com"
-      )
-
-      recipe_urls = await RecipePersistence.check_recipe_urls_against_db(all_recipe_urls)
-
-      if not all_recipe_urls or not recipe_urls:
-        msg = self._get_empty_results_message(all_recipe_urls, recipe_urls)
+      adapters = self.registry.get_all()
+      if not adapters:
+        msg = "No site adapters registered."
         logger.warning(msg)
         self._mark_crawler_idle(msg)
         await self._release_lock()
         return
 
-      self.app.state.crawler.total_urls = len(recipe_urls)
-      logger.info(f"Starting crawl of {len(recipe_urls)} recipes...")
+      async with aiohttp.ClientSession(headers=_HTTP_HEADERS) as session:
+        for adapter in adapters:
+          all_urls = await adapter.get_recipe_urls()
+          new_urls = await RecipePersistence.check_recipe_urls_against_db(all_urls)
 
-      await self._process_all_urls(recipe_urls)
+          if not new_urls:
+            logger.info(f"[{adapter.site_id}] No new URLs to crawl.")
+            continue
+
+          self.app.state.crawler.total_urls += len(new_urls)
+          logger.info(f"[{adapter.site_id}] Crawling {len(new_urls)} new recipes...")
+
+          for url in new_urls:
+            result = await adapter.fetch_and_parse(session, url)
+            self.app.state.crawler.processed_urls += 1
+
+            if result is None:
+              self.app.state.crawler.fail_count += 1
+              logger.warning(f"[{adapter.site_id}] Skipping {url}: parse returned None")
+            else:
+              self.app.state.crawler.success_count += 1
+              await self.persistence.save_recipe(result)
 
       self._mark_crawler_completed()
       logger.info(f"Crawl complete. {self.app.state.crawler.processed_urls} recipes processed.")
@@ -125,94 +117,21 @@ class CrawlerService:
     finally:
       await self._release_lock()
 
-  async def _process_all_urls(self, recipe_urls: List[str]):
-    """
-    Process all recipe URLs concurrently.
-
-    Args:
-        recipe_urls: List of URLs to process
-    """
-    headers = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.5",
-    }
-    semaphore = asyncio.Semaphore(MAX_CONCURRENT)
-
-    async with aiohttp.ClientSession(headers=headers) as session:
-      tasks = [
-          self._process_url(session, url, semaphore)
-          for url in recipe_urls
-      ]
-
-      results = await asyncio.gather(*tasks, return_exceptions=True)
-
-      for i, result in enumerate(results):
-        if isinstance(result, Exception):
-          logger.error(
-              f"Exception processing {recipe_urls[i]}: "
-              f"[{type(result).__name__}] {result}",
-              exc_info=result
-          )
-          self.app.state.crawler.fail_count += 1
-
-  async def _process_url(self, session: aiohttp.ClientSession, url: str, semaphore: asyncio.Semaphore):
-    """
-    Process a single URL with concurrency control.
-
-    Args:
-        session: aiohttp session for requests
-        url: URL to process
-        semaphore: Semaphore for concurrency control
-
-    Returns:
-        Parsed recipe data or exception
-    """
-    async with semaphore:
-      result = await RecipeParser.fetch_and_parse(session, url)
-
-      self.app.state.crawler.processed_urls += 1
-      if not result.get("name"):
-        self.app.state.crawler.fail_count += 1
-        logger.warning(f"Skipping {url}: no recipe name extracted (error={result.get('error', 'no JSON-LD')})")
-      else:
-        self.app.state.crawler.success_count += 1
-        await self.persistence.save_recipe(result)
-
-      return result
-
   def _mark_crawler_idle(self, error_message: str):
-    """Mark crawler as idle with an error message."""
     self.app.state.crawler.status = CrawlStatus.IDLE
     self.app.state.crawler.error_message = error_message
     self.app.state.crawler.end_time = datetime.now()
 
   def _mark_crawler_completed(self):
-    """Mark crawler as completed successfully."""
     self.app.state.crawler.status = CrawlStatus.COMPLETED
     self.app.state.crawler.end_time = datetime.now()
 
   def _mark_crawler_failed(self, error_message: str):
-    """Mark crawler as failed with an error message."""
     self.app.state.crawler.status = CrawlStatus.FAILED
     self.app.state.crawler.error_message = error_message
     self.app.state.crawler.end_time = datetime.now()
 
-  @staticmethod
-  def _get_empty_results_message(all_urls: List[str], filtered_urls: List[str]) -> str:
-    """Generate appropriate error message for empty results."""
-    if not all_urls:
-      return f"No URLs found from sitemap [{SITEMAP_URL}]"
-    else:
-      return f"No new URLs found from sitemap [{SITEMAP_URL}]"
-
   async def _acquire_lock(self) -> bool:
-    """
-    Try to acquire the crawl lock.
-
-    Returns:
-        True if lock was successfully acquired, False otherwise
-    """
     async with AsyncSessionLocal() as db:
       result = await db.execute(select(CrawlLock).where(CrawlLock.id == 1))
       lock = result.scalar_one_or_none()
@@ -230,7 +149,6 @@ class CrawlerService:
       return False
 
   async def _release_lock(self):
-    """Release the crawl lock."""
     async with AsyncSessionLocal() as db:
       result = await db.execute(select(CrawlLock).where(CrawlLock.id == 1))
       lock = result.scalar_one_or_none()
@@ -240,12 +158,6 @@ class CrawlerService:
         await db.commit()
 
   async def _check_lock(self) -> bool:
-    """
-    Check if the lock is currently held.
-
-    Returns:
-        True if lock is held, False otherwise
-    """
     async with AsyncSessionLocal() as db:
       result = await db.execute(select(CrawlLock).where(CrawlLock.id == 1))
       lock = result.scalar_one_or_none()

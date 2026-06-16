@@ -6,6 +6,7 @@ from database import AsyncSessionLocal
 from integrations.chromadb import ChromaRepository
 from integrations.fm_api import FMApiClientAsync
 from integrations.llm import OllamaLLM
+from schemas.NormalizedRecipe import NormalizedRecipe
 from schemas.Recipe import RecipeCreate
 from services.recipe_service import RecipeService
 from utils.html_utils import html_unescape_recursive
@@ -34,29 +35,21 @@ class RecipePersistence:
     self.chroma = chroma_repo or ChromaRepository()
     self.llm_client = llm_client or OllamaLLM()
 
-  async def prepare_semantic_data(self, recipe_data: dict) -> tuple[str, dict]:
-    text, pre_processed_metadata = await asyncio.gather(
-        self.llm_client.build_document(recipe=recipe_data),
-        self.llm_client.build_metadata(recipe=recipe_data)
-    )
-    processed_metadata = self.chroma.process_json_for_vector_db(pre_processed_metadata)
-    return (text, processed_metadata)
-
-  async def save_recipe(self, result: dict):
+  async def save_recipe(self, recipe: NormalizedRecipe):
     """Save recipe to FM API, ChromaDB, and local database."""
-    recipe_data = html_unescape_recursive(result)
+    data = html_unescape_recursive(recipe.model_dump())
 
-    # 1. Parse ingredients asynchronously alongside LLM metadata compilation
-    raw_ingredients = recipe_data.get("recipeIngredient", [])
+    # 1. Parse ingredients alongside LLM metadata compilation
+    raw_ingredients = data.get("ingredients_raw", [])
 
     text, pre_processed_metadata, structured_ingredients = await asyncio.gather(
-        self.llm_client.build_document(recipe=recipe_data),
-        self.llm_client.build_metadata(recipe=recipe_data),
+        self.llm_client.build_document(recipe=data),
+        self.llm_client.build_metadata(recipe=data),
         self.llm_client.parse_ingredients(raw_ingredients)
     )
 
-    # 2. Inject the newly structured ingredients into the payload sent to FM API
-    recipe_data["recipeIngredient"] = structured_ingredients
+    # 2. Replace raw strings with structured ingredient dicts for the fm_api payload
+    data["ingredients_raw"] = structured_ingredients
 
     processed_metadata = self.chroma.process_json_for_vector_db(pre_processed_metadata)
 
@@ -64,12 +57,12 @@ class RecipePersistence:
     async with AsyncSessionLocal() as db:
       save_url_response = await RecipeService.create_recipe(
           db=db,
-          recipe=RecipeCreate(url=result.get("url"))
+          recipe=RecipeCreate(url=data["source_url"])
       )
       logger.debug(f"Saved URL to database: {save_url_response}")
 
     # 4. Save to fm_api then ChromaDB; roll back both if ChromaDB fails
-    response = await self.fm_api_client.create_recipe(recipe_data)
+    response = await self.fm_api_client.create_recipe(data)
     fm_recipe_id = response.get("id")
     try:
       await self.chroma.add(

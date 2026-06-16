@@ -19,6 +19,9 @@ from constants import (
 
 import asyncio
 from models.Crawler import CrawlerState
+from adapters.base import site_registry
+from adapters.budget_bytes import BudgetBytesSiteAdapter
+from adapters.cooking_classy import CookingClassySiteAdapter
 from services.crawler_service import CrawlerService
 from routers.crawler_router import router as crawler_router
 from routers.recipe import router as recipe_router
@@ -45,6 +48,9 @@ async def lifespan(app: FastAPI):
         raise Exception()
       else:
         await asyncio.sleep(DB_RETRY_DELAY)
+
+  site_registry.register(BudgetBytesSiteAdapter())
+  site_registry.register(CookingClassySiteAdapter())
 
   app.state.crawler = CrawlerState()
 
