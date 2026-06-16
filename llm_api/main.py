@@ -22,6 +22,11 @@ from models.Crawler import CrawlerState
 from adapters.base import site_registry
 from adapters.budget_bytes import BudgetBytesSiteAdapter
 from adapters.cooking_classy import CookingClassySiteAdapter
+from adapters.minimalist_baker import MinimalistBakerSiteAdapter
+from adapters.pinch_of_yum import PinchOfYumSiteAdapter
+from adapters.sallys_baking import SallysBakingSiteAdapter
+from adapters.cookie_and_kate import CookieAndKateSiteAdapter
+from adapters.skinnytaste import SkinnytasteSiteAdapter
 from services.crawler_service import CrawlerService
 from routers.crawler_router import router as crawler_router
 from routers.recipe import router as recipe_router
@@ -52,6 +57,11 @@ async def lifespan(app: FastAPI):
 
   site_registry.register(BudgetBytesSiteAdapter())
   site_registry.register(CookingClassySiteAdapter())
+  site_registry.register(MinimalistBakerSiteAdapter())
+  site_registry.register(PinchOfYumSiteAdapter())
+  site_registry.register(SallysBakingSiteAdapter())
+  site_registry.register(CookieAndKateSiteAdapter())
+  site_registry.register(SkinnytasteSiteAdapter())
 
   app.state.crawler = CrawlerState()
 
