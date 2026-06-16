@@ -22,6 +22,7 @@ services:
       - FM_API_SERVICE_PASSWORD=Admin@123
       - LAMBDA_IDENTIFY_URL=${LAMBDA_IDENTIFY_URL}
       - LAMBDA_API_KEY=${LAMBDA_API_KEY}
+      - USDA_API_KEY=${USDA_API_KEY:-DEMO_KEY}
     env_file:
       - .env
     depends_on:

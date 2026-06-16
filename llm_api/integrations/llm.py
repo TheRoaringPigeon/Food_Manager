@@ -335,6 +335,37 @@ Return ONLY valid JSON. No commentary."""
           "substitutions": {}
       }
 
+  async def pick_usda_match(self, ingredient_name: str, candidates: list[dict]) -> int | None:
+    """
+    Given a cooking ingredient name and a list of USDA food entries, return the
+    0-based index of the best generic match, or None if nothing fits.
+    """
+    candidates_text = "\n".join(
+        f"{i}: {c.get('description', 'Unknown')} (type: {c.get('dataType', '')})"
+        for i, c in enumerate(candidates)
+    )
+    prompt = f"""You are a nutrition database matcher.
+
+Given the cooking ingredient "{ingredient_name}", pick which USDA entry best represents it as a generic, unbranded ingredient used in home cooking.
+
+Candidates:
+{candidates_text}
+
+Return ONLY valid JSON: {{"index": <number 0-{len(candidates) - 1}>, "confidence": "high" | "medium" | "low"}}
+If none are a reasonable match, return: {{"index": null, "confidence": "none"}}
+Return ONLY the JSON. No commentary."""
+
+    resp = await self.chat([{"role": "user", "content": prompt}])
+    content = resp["message"]["content"].strip()
+    try:
+      parsed = _extract_json_from_response(content)
+      idx = parsed.get("index")
+      if idx is None:
+        return None
+      return int(idx)
+    except (ValueError, TypeError, json.JSONDecodeError, KeyError):
+      return 0
+
   async def build_document(self, recipe: dict) -> str:
     """
     Ask the LLM to build a clean, readable text document from recipe data.

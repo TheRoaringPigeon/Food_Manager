@@ -4,3 +4,4 @@ __pycache__
 nul
 node_modules
 .aws-sam
+.env

@@ -165,5 +165,20 @@ class FMApiClientAsync:
     resp = await self.client.delete(url, headers=self._auth_header())
     resp.raise_for_status()
 
+  async def get_all_ingredients(self) -> list[dict]:
+    await self._ensure_token()
+    url = f"{self.base_url}/food-manager/api/ingredients"
+    resp = await self.client.get(url, params={"limit": 500}, headers=self._auth_header())
+    resp.raise_for_status()
+    return resp.json()
+
+  async def update_ingredient_nutrition(self, ingredient_id: int, calories_per_100g: float, usda_fdc_id: str) -> dict:
+    await self._ensure_token()
+    url = f"{self.base_url}/food-manager/api/ingredients/{ingredient_id}"
+    payload = {"calories_per_100g": calories_per_100g, "usda_fdc_id": usda_fdc_id}
+    resp = await self.client.put(url, json=payload, headers=self._auth_header())
+    resp.raise_for_status()
+    return resp.json()
+
   async def close(self):
     await self.client.aclose()
