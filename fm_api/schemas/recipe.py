@@ -17,7 +17,6 @@ class RecipeIngredientResponse(BaseModel):
     name: str
     quantity: Optional[float] = None
     unit: Optional[str] = None
-    is_available: Optional[bool] = None
 
     class Config:
         from_attributes = True

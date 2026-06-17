@@ -79,7 +79,6 @@ def _serialize_ingredients(recipe: Recipe) -> List[Dict[str, Any]]:
             "name": ri.name,
             "quantity": ri.quantity,
             "unit": ri.unit,
-            "is_available": ri.ingredient.is_available if ri.ingredient else None,
         }
         for ri in (recipe.ingredients or [])
     ]

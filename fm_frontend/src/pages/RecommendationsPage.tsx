@@ -7,6 +7,9 @@ import { identifyIngredients } from '../api/ingredient_vision'
 import { useCart } from '../context/CartContext'
 import RecommendationCandidateModal from '../components/RecommendationCandidateModal'
 import IngredientScanModal from '../components/IngredientScanModal'
+import type { MealType, RecipeCalorieEstimate } from '../types/calorieLog'
+import { MEAL_TYPES } from '../types/calorieLog'
+import { createCalorieLog, getRecipeCalorieEstimate } from '../api/calorieLog'
 
 export default function RecommendationsPage() {
   const { recipeIds, addRecipe, removeRecipe } = useCart()
@@ -30,6 +33,44 @@ export default function RecommendationsPage() {
 
   // Ref so the result event handler can read the latest candidates without stale closure
   const candidatesRef = useRef<CandidateRecipe[]>([])
+
+  // Log meal state
+  const [logTargetId, setLogTargetId] = useState<number | null>(null)
+  const [logTargetName, setLogTargetName] = useState('')
+  const [logServings, setLogServings] = useState(1)
+  const [logMeal, setLogMeal] = useState<MealType>('dinner')
+  const [logEstimate, setLogEstimate] = useState<RecipeCalorieEstimate | null>(null)
+  const [logSubmitting, setLogSubmitting] = useState(false)
+
+  const openLogModal = async (recipeId: number, recipeName: string) => {
+    setLogTargetId(recipeId)
+    setLogTargetName(recipeName)
+    setLogServings(1)
+    setLogMeal('dinner')
+    setLogEstimate(null)
+    try {
+      const est = await getRecipeCalorieEstimate(recipeId)
+      setLogEstimate(est)
+    } catch { /* non-critical */ }
+  }
+
+  const handleLogSubmit = async () => {
+    if (!logTargetId) return
+    setLogSubmitting(true)
+    try {
+      await createCalorieLog({
+        entry_type: 'recipe',
+        recipe_id: logTargetId,
+        food_name: logTargetName,
+        servings_eaten: logServings,
+        calories: logEstimate?.per_serving != null ? logEstimate.per_serving * logServings : undefined,
+        meal_type: logMeal,
+      })
+      setLogTargetId(null)
+    } catch { /* ignore */ } finally {
+      setLogSubmitting(false)
+    }
+  }
 
   // Ingredient scan state
   const scanInputRef = useRef<HTMLInputElement>(null)
@@ -340,20 +381,31 @@ export default function RecommendationsPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={e => {
-                      e.stopPropagation()
-                      inCart ? removeRecipe(recipeId) : addRecipe(recipeId)
-                    }}
-                    className={`flex-shrink-0 px-2.5 py-1 text-xs font-medium border rounded ${
-                      inCart
-                        ? 'foreground-primary border-current'
-                        : 'foreground-subtle border-line hover:background-surface-raised'
-                    }`}
-                  >
-                    {inCart ? '✓ Cart' : '+ Cart'}
-                  </button>
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation()
+                        inCart ? removeRecipe(recipeId) : addRecipe(recipeId)
+                      }}
+                      className={`px-2.5 py-1 text-xs font-medium border rounded ${
+                        inCart
+                          ? 'foreground-primary border-current'
+                          : 'foreground-subtle border-line hover:background-surface-raised'
+                      }`}
+                    >
+                      {inCart ? '✓ Cart' : '+ Cart'}
+                    </button>
+                    {!isNaN(recipeId) && recipeId > 0 && (
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); openLogModal(recipeId, c.name) }}
+                        className="px-2.5 py-1 text-xs font-medium border border-line rounded foreground-subtle hover:background-surface-raised"
+                      >
+                        Log
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )
@@ -379,6 +431,77 @@ export default function RecommendationsPage() {
           onConfirm={handleScanConfirm}
           onClose={() => setScanOpen(false)}
         />
+      )}
+
+      {logTargetId != null && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={() => setLogTargetId(null)}>
+          <div className="background-surface rounded-lg shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="text-base font-semibold foreground-content mb-1">Log this meal?</h2>
+            <p className="text-sm foreground-subtle mb-4">{logTargetName}</p>
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-xs font-medium foreground-subtle mb-1">Servings eaten</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {[0.25, 0.5, 0.75, 1, 1.5, 2, 3].map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setLogServings(s)}
+                      className={`px-2.5 py-1 text-sm rounded border ${
+                        logServings === s
+                          ? 'border-primary background-primary-soft foreground-primary-dim'
+                          : 'border-line foreground-subtle hover:border-primary'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                {logEstimate?.per_serving != null && (
+                  <p className="text-xs foreground-primary mt-1.5">
+                    ≈ {Math.round(logEstimate.per_serving * logServings)} kcal
+                    {logEstimate.is_estimate ? ' (estimate)' : ''}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium foreground-subtle mb-1">Meal</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {MEAL_TYPES.map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setLogMeal(m)}
+                      className={`px-2.5 py-1 text-sm rounded border capitalize ${
+                        logMeal === m
+                          ? 'border-primary background-primary-soft foreground-primary-dim'
+                          : 'border-line foreground-subtle hover:border-primary'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleLogSubmit}
+                  disabled={logSubmitting}
+                  className="flex-1 px-4 py-2 background-primary text-white rounded text-sm font-medium hover:background-primary-hover disabled:opacity-50"
+                >
+                  {logSubmitting ? 'Logging...' : 'Log meal'}
+                </button>
+                <button
+                  onClick={() => setLogTargetId(null)}
+                  className="px-4 py-2 border border-line rounded text-sm foreground-subtle hover:foreground-content"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

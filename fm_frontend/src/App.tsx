@@ -14,6 +14,7 @@ import ShoppingListPage from './pages/ShoppingListPage'
 import AdminPage from './pages/AdminPage'
 import ProfilePage from './pages/ProfilePage'
 import ForceChangePasswordPage from './pages/ForceChangePasswordPage'
+import CalorieLogPage from './pages/CalorieLogPage'
 
 function ThemeSync() {
   const { user } = useAuth()
@@ -50,6 +51,7 @@ export default function App() {
                   <Route path="recipes" element={<RecipesPage />} />
                   <Route path="recommendations" element={<RecommendationsPage />} />
                   <Route path="shopping-list" element={<ShoppingListPage />} />
+                  <Route path="calorie-log" element={<CalorieLogPage />} />
                   <Route path="profile" element={<ProfilePage />} />
                 </Route>
               </Route>

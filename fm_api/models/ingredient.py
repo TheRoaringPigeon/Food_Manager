@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Enum, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, Enum, Float
 from sqlalchemy.sql import func
 import enum
 from database import Base
@@ -22,7 +22,6 @@ class Ingredient(Base):
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
     ingredient_type = Column(Enum(IngredientTypeEnum), nullable=False, index=True)
-    is_available = Column(Boolean, default=True, index=True)
     tags = Column(Text, nullable=True)
     image_url = Column(String(500), nullable=True)
     calories_per_100g = Column(Float, nullable=True)

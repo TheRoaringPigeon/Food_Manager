@@ -11,6 +11,7 @@ export default function ProfilePage() {
   const [username, setUsername] = useState(user?.username ?? '')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [calorieGoal, setCalorieGoal] = useState<number | ''>(user?.calorie_goal ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -25,11 +26,13 @@ export default function ProfilePage() {
       return
     }
 
-    const payload: { username?: string; password?: string } = {}
+    const payload: { username?: string; password?: string; calorie_goal?: number | null } = {}
     if (username !== user?.username) payload.username = username
     if (password) payload.password = password
+    const goalNum = calorieGoal === '' ? null : Number(calorieGoal)
+    if (goalNum !== (user?.calorie_goal ?? null)) payload.calorie_goal = goalNum
 
-    if (!payload.username && !payload.password) {
+    if (!payload.username && !payload.password && !('calorie_goal' in payload)) {
       setError('No changes to save')
       return
     }
@@ -37,7 +40,7 @@ export default function ProfilePage() {
     setLoading(true)
     try {
       const updated = await updateUser(user!.id, payload)
-      updateAuthUser({ username: updated.username })
+      updateAuthUser({ username: updated.username, calorie_goal: updated.calorie_goal })
       setPassword('')
       setConfirmPassword('')
       setSuccess('Profile updated successfully')
@@ -102,6 +105,20 @@ export default function ProfilePage() {
             placeholder="Leave blank to keep current"
             className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium foreground-content mb-1">Daily Calorie Goal (kcal)</label>
+          <input
+            type="number"
+            min="0"
+            step="50"
+            value={calorieGoal}
+            onChange={e => setCalorieGoal(e.target.value === '' ? '' : Number(e.target.value))}
+            placeholder="e.g. 2000"
+            className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <p className="text-xs foreground-dim mt-1">Used to track daily progress on the Calorie Log page.</p>
         </div>
 
         <button

@@ -12,6 +12,7 @@ class UserResponse(BaseModel):
     is_active: bool
     theme: str = 'indigo'
     must_change_password: bool = False
+    calorie_goal: Optional[int] = None
     password_changed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
@@ -54,6 +55,7 @@ class UpdateUserPayload(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=100)
     password: Optional[str] = Field(None, min_length=8)
     theme: Optional[str] = Field(None, max_length=50)
+    calorie_goal: Optional[int] = Field(None, gt=0)
 
 
 class ChangePasswordRequest(BaseModel):

@@ -4,6 +4,9 @@ import { RECIPE_TYPES } from '../types/recipe'
 import { listRecipes, countRecipes, createRecipe, toggleFavorite, markCooked } from '../api/recipes'
 import RecipeDetailModal from '../components/RecipeDetailModal'
 import { useCart } from '../context/CartContext'
+import type { MealType, RecipeCalorieEstimate } from '../types/calorieLog'
+import { MEAL_TYPES } from '../types/calorieLog'
+import { createCalorieLog, getRecipeCalorieEstimate } from '../api/calorieLog'
 
 type SortKey = 'name' | 'recipe_type' | 'time' | 'last_cooked'
 type SortDir = 'asc' | 'desc'
@@ -49,6 +52,11 @@ export default function RecipesPage() {
   const [createIngRows, setCreateIngRows] = useState<RecipeIngredient[]>([{ ...BLANK_ING }])
   const [instructionsText, setInstructionsText] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [logTarget, setLogTarget] = useState<Recipe | null>(null)
+  const [logServings, setLogServings] = useState(1)
+  const [logMeal, setLogMeal] = useState<MealType>('dinner')
+  const [logEstimate, setLogEstimate] = useState<RecipeCalorieEstimate | null>(null)
+  const [logSubmitting, setLogSubmitting] = useState(false)
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -142,8 +150,40 @@ export default function RecipesPage() {
     try {
       const updated = await markCooked(id)
       setRecipes(prev => prev.map(r => r.id === updated.id ? updated : r))
+      openLogModal(updated)
     } catch (e) {
       setError(String(e))
+    }
+  }
+
+  const openLogModal = async (recipe: Recipe) => {
+    setLogTarget(recipe)
+    setLogServings(1)
+    setLogMeal('dinner')
+    setLogEstimate(null)
+    try {
+      const est = await getRecipeCalorieEstimate(recipe.id)
+      setLogEstimate(est)
+    } catch { /* non-critical */ }
+  }
+
+  const handleLogSubmit = async () => {
+    if (!logTarget) return
+    setLogSubmitting(true)
+    try {
+      await createCalorieLog({
+        entry_type: 'recipe',
+        recipe_id: logTarget.id,
+        food_name: logTarget.name,
+        servings_eaten: logServings,
+        calories: logEstimate?.per_serving != null ? logEstimate.per_serving * logServings : undefined,
+        meal_type: logMeal,
+      })
+      setLogTarget(null)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setLogSubmitting(false)
     }
   }
 
@@ -386,6 +426,12 @@ export default function RecipesPage() {
                   >
                     {recipeIds.includes(recipe.id) ? 'In Cart' : 'Cart'}
                   </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); openLogModal(recipe) }}
+                    className="text-xs foreground-subtle hover:underline"
+                  >
+                    Log
+                  </button>
                 </div>
               </div>
             ))}
@@ -451,6 +497,12 @@ export default function RecipesPage() {
                       >
                         {recipeIds.includes(recipe.id) ? 'In Cart' : 'Cart'}
                       </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); openLogModal(recipe) }}
+                        className="text-xs foreground-subtle hover:underline"
+                      >
+                        Log
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -494,6 +546,78 @@ export default function RecipesPage() {
             setSelectedRecipe(null)
           }}
         />
+      )}
+
+      {/* Log meal modal */}
+      {logTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={() => setLogTarget(null)}>
+          <div className="background-surface rounded-lg shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="text-base font-semibold foreground-content mb-1">Log this meal?</h2>
+            <p className="text-sm foreground-subtle mb-4">{logTarget.name}</p>
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-xs font-medium foreground-subtle mb-1">Servings eaten</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {[0.25, 0.5, 0.75, 1, 1.5, 2, 3].map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setLogServings(s)}
+                      className={`px-2.5 py-1 text-sm rounded border ${
+                        logServings === s
+                          ? 'border-primary background-primary-soft foreground-primary-dim'
+                          : 'border-line foreground-subtle hover:border-primary'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                {logEstimate?.per_serving != null && (
+                  <p className="text-xs foreground-primary mt-1.5">
+                    ≈ {Math.round(logEstimate.per_serving * logServings)} kcal
+                    {logEstimate.is_estimate ? ' (estimate)' : ''}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium foreground-subtle mb-1">Meal</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {MEAL_TYPES.map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setLogMeal(m)}
+                      className={`px-2.5 py-1 text-sm rounded border capitalize ${
+                        logMeal === m
+                          ? 'border-primary background-primary-soft foreground-primary-dim'
+                          : 'border-line foreground-subtle hover:border-primary'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleLogSubmit}
+                  disabled={logSubmitting}
+                  className="flex-1 px-4 py-2 background-primary text-white rounded text-sm font-medium hover:background-primary-hover disabled:opacity-50"
+                >
+                  {logSubmitting ? 'Logging...' : 'Log meal'}
+                </button>
+                <button
+                  onClick={() => setLogTarget(null)}
+                  className="px-4 py-2 border border-line rounded text-sm foreground-subtle hover:foreground-content"
+                >
+                  Skip
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

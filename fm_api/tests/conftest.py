@@ -91,5 +91,4 @@ def sample_ingredient_data():
       "ingredient_type": "meat",
       "tags": "",
       "image_url": "",
-      "is_available": True,
   }

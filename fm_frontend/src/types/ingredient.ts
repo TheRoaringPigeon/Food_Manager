@@ -9,7 +9,8 @@ export interface Ingredient {
   name: string
   description: string
   ingredient_type: IngredientType
-  is_available: boolean
+  calories_per_100g?: number | null
+  usda_fdc_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -18,12 +19,10 @@ export interface CreateIngredientPayload {
   name: string
   description: string
   ingredient_type: IngredientType
-  is_available: boolean
 }
 
 export interface UpdateIngredientPayload {
   name?: string
   description?: string
   ingredient_type?: IngredientType
-  is_available?: boolean
 }

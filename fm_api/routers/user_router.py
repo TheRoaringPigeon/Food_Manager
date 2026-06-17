@@ -77,7 +77,12 @@ async def update_user(
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
     try:
         user = await UserService.update_user(
-            db, user_id, username=payload.username, password=payload.password, theme=payload.theme
+            db, user_id,
+            username=payload.username,
+            password=payload.password,
+            theme=payload.theme,
+            calorie_goal=payload.calorie_goal if payload.calorie_goal is not None else None,
+            clear_calorie_goal=('calorie_goal' in payload.model_fields_set and payload.calorie_goal is None),
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

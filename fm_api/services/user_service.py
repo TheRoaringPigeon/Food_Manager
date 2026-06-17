@@ -103,6 +103,8 @@ class UserService:
         username: Optional[str] = None,
         password: Optional[str] = None,
         theme: Optional[str] = None,
+        calorie_goal: Optional[int] = None,
+        clear_calorie_goal: bool = False,
     ) -> Optional[User]:
         result = await db.execute(select(User).filter(User.id == user_id))
         user = result.scalar_one_or_none()
@@ -120,6 +122,10 @@ class UserService:
             user.must_change_password = False
         if theme is not None:
             user.theme = theme
+        if calorie_goal is not None:
+            user.calorie_goal = calorie_goal
+        elif clear_calorie_goal:
+            user.calorie_goal = None
         await db.commit()
         await db.refresh(user)
         return user

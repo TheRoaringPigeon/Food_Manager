@@ -5,7 +5,6 @@ export interface IngredientListParams {
   skip?: number
   limit?: number
   ingredient_type?: string
-  is_available?: boolean
   search?: string
   sort_by?: string
   sort_dir?: string
@@ -17,7 +16,6 @@ function buildQuery(params?: IngredientListParams): string {
   if (params.skip != null) q.set('skip', String(params.skip))
   if (params.limit != null) q.set('limit', String(params.limit))
   if (params.ingredient_type) q.set('ingredient_type', params.ingredient_type)
-  if (params.is_available != null) q.set('is_available', String(params.is_available))
   if (params.search) q.set('search', params.search)
   if (params.sort_by) q.set('sort_by', params.sort_by)
   if (params.sort_dir) q.set('sort_dir', params.sort_dir)
@@ -36,9 +34,6 @@ export const createIngredient = (payload: CreateIngredientPayload) =>
     method: 'POST',
     body: JSON.stringify(payload),
   })
-
-export const toggleAvailability = (id: number) =>
-  apiFetch<Ingredient>(`/ingredients/${id}/availability`, { method: 'POST' })
 
 export const updateIngredient = (id: number, payload: UpdateIngredientPayload) =>
   apiFetch<Ingredient>(`/ingredients/${id}`, {
