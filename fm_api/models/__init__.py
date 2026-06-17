@@ -6,3 +6,4 @@ from .family import Family
 from .user import User
 from .family_recipe_status import FamilyRecipeStatus
 from .password_history import PasswordHistory
+from .calorie_log import CalorieLog

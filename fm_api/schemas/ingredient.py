@@ -10,7 +10,6 @@ class IngredientBase(BaseModel):
   ingredient_type: IngredientTypeEnum
   tags: Optional[str] = None
   image_url: Optional[str] = None
-  is_available: Optional[bool] = True
 
 
 class IngredientCreate(IngredientBase):
@@ -23,7 +22,6 @@ class IngredientUpdate(BaseModel):
   ingredient_type: Optional[IngredientTypeEnum] = None
   tags: Optional[str] = None
   image_url: Optional[str] = None
-  is_available: Optional[bool] = None
   calories_per_100g: Optional[float] = None
   usda_fdc_id: Optional[str] = None
 

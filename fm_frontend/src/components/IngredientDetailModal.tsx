@@ -21,7 +21,6 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved, on
     name: ingredient.name,
     description: ingredient.description,
     ingredient_type: ingredient.ingredient_type,
-    is_available: ingredient.is_available,
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -109,15 +108,6 @@ export default function IngredientDetailModal({ ingredient, onClose, onSaved, on
               />
             </div>
           </div>
-
-          <label className="flex items-center gap-2 text-sm foreground-content">
-            <input
-              type="checkbox"
-              checked={form.is_available ?? true}
-              onChange={e => setForm(f => ({ ...f, is_available: e.target.checked }))}
-            />
-            Available
-          </label>
 
           <div className="text-xs foreground-dim space-y-0.5 pt-1">
             <div>ID: {ingredient.id}</div>

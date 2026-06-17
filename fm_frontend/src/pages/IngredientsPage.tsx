@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
 import type { Ingredient, CreateIngredientPayload, IngredientType } from '../types/ingredient'
 import { INGREDIENT_TYPES } from '../types/ingredient'
-import { listIngredients, countIngredients, createIngredient, toggleAvailability } from '../api/ingredients'
+import { listIngredients, countIngredients, createIngredient } from '../api/ingredients'
 import IngredientDetailModal from '../components/IngredientDetailModal'
 import { useCart } from '../context/CartContext'
 
-type SortKey = 'name' | 'ingredient_type' | 'status'
+type SortKey = 'name' | 'ingredient_type' | 'calories_per_100g'
 type SortDir = 'asc' | 'desc'
 
 const HEADERS: { label: string; key: SortKey | null }[] = [
   { label: 'Name', key: 'name' },
   { label: 'Type', key: 'ingredient_type' },
-  { label: 'Status', key: 'status' },
+  { label: 'Cal/100g', key: 'calories_per_100g' },
   { label: '', key: null },
 ]
 
@@ -19,7 +19,6 @@ const EMPTY_FORM: CreateIngredientPayload = {
   name: '',
   description: '',
   ingredient_type: 'produce',
-  is_available: true,
 }
 
 const PAGE_SIZES = [10, 20, 50]
@@ -37,7 +36,6 @@ export default function IngredientsPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
-  const [availFilter, setAvailFilter] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [total, setTotal] = useState(0)
@@ -60,7 +58,7 @@ export default function IngredientsPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, typeFilter, availFilter, pageSize, sortKey, sortDir])
+  }, [debouncedSearch, typeFilter, pageSize, sortKey, sortDir])
 
   const load = async () => {
     setLoading(true)
@@ -70,7 +68,6 @@ export default function IngredientsPage() {
         limit: pageSize,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(typeFilter ? { ingredient_type: typeFilter } : {}),
-        ...(availFilter !== '' ? { is_available: availFilter === 'true' } : {}),
         sort_by: sortKey,
         sort_dir: sortDir,
       }
@@ -87,7 +84,7 @@ export default function IngredientsPage() {
     }
   }
 
-  useEffect(() => { load() }, [page, pageSize, debouncedSearch, typeFilter, availFilter, sortKey, sortDir])
+  useEffect(() => { load() }, [page, pageSize, debouncedSearch, typeFilter, sortKey, sortDir])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,15 +98,6 @@ export default function IngredientsPage() {
       setError(String(e))
     } finally {
       setSubmitting(false)
-    }
-  }
-
-  const handleToggle = async (id: number) => {
-    try {
-      const updated = await toggleAvailability(id)
-      setIngredients(prev => prev.map(i => i.id === updated.id ? updated : i))
-    } catch (e) {
-      setError(String(e))
     }
   }
 
@@ -165,14 +153,6 @@ export default function IngredientsPage() {
                 />
               </div>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.is_available}
-                onChange={e => setForm(f => ({ ...f, is_available: e.target.checked }))}
-              />
-              Available
-            </label>
             <button
               type="submit"
               disabled={submitting}
@@ -203,15 +183,6 @@ export default function IngredientsPage() {
         </select>
         <select
           className="border border-line rounded px-3 py-1.5 text-sm"
-          value={availFilter}
-          onChange={e => setAvailFilter(e.target.value)}
-        >
-          <option value="">All</option>
-          <option value="true">Available</option>
-          <option value="false">Out of stock</option>
-        </select>
-        <select
-          className="border border-line rounded px-3 py-1.5 text-sm"
           value={pageSize}
           onChange={e => setPageSize(Number(e.target.value))}
         >
@@ -238,20 +209,12 @@ export default function IngredientsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium foreground-content">{ing.name}</p>
                     <p className="text-xs foreground-subtle capitalize mt-0.5">{ing.ingredient_type}</p>
+                    {ing.calories_per_100g != null && (
+                      <p className="text-xs foreground-subtle mt-0.5">{ing.calories_per_100g} cal/100g</p>
+                    )}
                   </div>
-                  <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${
-                    ing.is_available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
-                  }`}>
-                    {ing.is_available ? 'Available' : 'Out of stock'}
-                  </span>
                 </div>
                 <div className="flex gap-3 mt-2">
-                  <button
-                    onClick={e => { e.stopPropagation(); handleToggle(ing.id) }}
-                    className="text-xs foreground-primary hover:underline"
-                  >
-                    Toggle
-                  </button>
                   <button
                     onClick={e => {
                       e.stopPropagation()
@@ -287,25 +250,15 @@ export default function IngredientsPage() {
               </thead>
               <tbody className="divide-y divide-divider">
                 {ingredients.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-6 text-center foreground-dim">No ingredients found.</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-6 text-center foreground-dim">No ingredients found.</td></tr>
                 ) : ingredients.map(ing => (
                   <tr key={ing.id} className="hover:background-surface-raised cursor-pointer" onClick={() => setSelectedIngredient(ing)}>
                     <td className="px-4 py-2 font-medium foreground-content">{ing.name}</td>
                     <td className="px-4 py-2 foreground-subtle capitalize">{ing.ingredient_type}</td>
-                    <td className="px-4 py-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        ing.is_available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
-                      }`}>
-                        {ing.is_available ? 'Available' : 'Out of stock'}
-                      </span>
+                    <td className="px-4 py-2 foreground-subtle">
+                      {ing.calories_per_100g != null ? ing.calories_per_100g : '—'}
                     </td>
                     <td className="px-4 py-2 flex gap-2">
-                      <button
-                        onClick={e => { e.stopPropagation(); handleToggle(ing.id) }}
-                        className="text-xs foreground-primary hover:underline"
-                      >
-                        Toggle
-                      </button>
                       <button
                         onClick={e => {
                           e.stopPropagation()

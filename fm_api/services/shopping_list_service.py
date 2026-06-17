@@ -16,7 +16,6 @@ class ShoppingListService:
         ingredient_ids: List[int],
     ) -> Dict[str, Any]:
         needed: List[Dict] = []
-        available: List[Dict] = []
         unlinked: List[Dict] = []
 
         # (ingredient_id, unit) → accumulated item dict
@@ -64,7 +63,6 @@ class ShoppingListService:
                         "quantity": ri.quantity,
                         "unit": ri.unit,
                         "source_recipes": [recipe_name],
-                        "is_available": ing.is_available if ing else True,
                     }
 
         # --- Manually added pantry ingredients ---
@@ -83,14 +81,8 @@ class ShoppingListService:
                         "quantity": None,
                         "unit": None,
                         "source_recipes": ["manually added"],
-                        "is_available": ing.is_available,
                     }
 
-        # --- Route linked items to needed / available ---
-        for item in linked.values():
-            if item["is_available"]:
-                available.append(item)
-            else:
-                needed.append(item)
+        needed.extend(linked.values())
 
-        return {"needed": needed, "available": available, "unlinked": unlinked}
+        return {"needed": needed, "unlinked": unlinked}

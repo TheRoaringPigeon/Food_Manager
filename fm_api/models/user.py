@@ -22,6 +22,7 @@ class User(Base):
     theme = Column(String(50), nullable=False, default='indigo')
     password_changed_at = Column(DateTime, nullable=True)
     must_change_password = Column(Boolean, nullable=False, default=False)
+    calorie_goal = Column(Integer, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

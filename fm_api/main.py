@@ -21,6 +21,7 @@ from routers import (
     user_router,
     family_router,
     shopping_list_router,
+    calorie_log_router,
 )
 from utils.seeder import seed_defaults
 
@@ -49,6 +50,7 @@ app.include_router(family_router)
 app.include_router(recipe_router)
 app.include_router(ingredient_router)
 app.include_router(shopping_list_router)
+app.include_router(calorie_log_router)
 
 app.add_middleware(
     CORSMiddleware,

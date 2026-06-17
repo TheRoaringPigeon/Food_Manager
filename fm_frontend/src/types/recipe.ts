@@ -10,7 +10,6 @@ export interface RecipeIngredient {
   name: string
   quantity?: number | null
   unit?: string | null
-  is_available?: boolean | null
 }
 
 export interface Recipe {

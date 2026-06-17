@@ -20,6 +20,7 @@ export default function Layout() {
     { to: '/recipes', label: 'Recipes' },
     { to: '/recommendations', label: 'What should I cook?' },
     { to: '/shopping-list', label: 'Shopping List' },
+    { to: '/calorie-log', label: 'Calories' },
     ...(isAdmin ? [{ to: '/admin', label: 'Admin' }] : []),
   ]
 

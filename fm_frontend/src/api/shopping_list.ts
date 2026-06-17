@@ -6,7 +6,6 @@ export interface ShoppingListItem {
   quantity: number | null
   unit: string | null
   source_recipes: string[]
-  is_available: boolean
 }
 
 export interface UnlinkedItem {
@@ -18,7 +17,6 @@ export interface UnlinkedItem {
 
 export interface ShoppingListResponse {
   needed: ShoppingListItem[]
-  available: ShoppingListItem[]
   unlinked: UnlinkedItem[]
 }
 

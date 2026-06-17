@@ -13,7 +13,6 @@ class ShoppingListItem(BaseModel):
     quantity: Optional[float] = None
     unit: Optional[str] = None
     source_recipes: List[str] = []
-    is_available: bool
 
 
 class UnlinkedItem(BaseModel):
@@ -25,5 +24,4 @@ class UnlinkedItem(BaseModel):
 
 class ShoppingListResponse(BaseModel):
     needed: List[ShoppingListItem] = []
-    available: List[ShoppingListItem] = []
     unlinked: List[UnlinkedItem] = []

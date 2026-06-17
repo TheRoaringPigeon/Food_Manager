@@ -7,6 +7,7 @@ export interface AuthUser {
   family_id: number | null
   theme?: string
   must_change_password?: boolean
+  calorie_goal?: number | null
 }
 
 export interface TokenResponse {
@@ -38,6 +39,7 @@ export interface UserRecord {
   role: UserRole
   family_id: number | null
   is_active: boolean
+  calorie_goal?: number | null
   created_at: string
   updated_at: string
 }
@@ -46,4 +48,5 @@ export interface UpdateUserPayload {
   username?: string
   password?: string
   theme?: string
+  calorie_goal?: number | null
 }

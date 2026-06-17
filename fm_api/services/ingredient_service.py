@@ -8,7 +8,7 @@ from typing import List, Optional
 _INGREDIENT_SORT_COLS = {
     'name': Ingredient.name,
     'ingredient_type': Ingredient.ingredient_type,
-    'status': Ingredient.is_available,
+    'calories_per_100g': Ingredient.calories_per_100g,
 }
 
 
@@ -33,7 +33,6 @@ class IngredientService:
       skip: int = 0,
       limit: int = 100,
       ingredient_type: Optional[IngredientTypeEnum] = None,
-      is_available: Optional[bool] = None,
       search: Optional[str] = None,
       sort_by: str = 'name',
       sort_dir: str = 'asc',
@@ -41,8 +40,6 @@ class IngredientService:
     query = select(Ingredient)
     if ingredient_type:
       query = query.filter(Ingredient.ingredient_type == ingredient_type)
-    if is_available is not None:
-      query = query.filter(Ingredient.is_available == is_available)
     if search:
       search_term = f"%{search}%"
       query = query.filter(
@@ -61,14 +58,11 @@ class IngredientService:
   async def count_ingredients(
       db: AsyncSession,
       ingredient_type: Optional[IngredientTypeEnum] = None,
-      is_available: Optional[bool] = None,
       search: Optional[str] = None
   ) -> int:
     query = select(func.count()).select_from(Ingredient)
     if ingredient_type:
       query = query.filter(Ingredient.ingredient_type == ingredient_type)
-    if is_available is not None:
-      query = query.filter(Ingredient.is_available == is_available)
     if search:
       search_term = f"%{search}%"
       query = query.filter(
@@ -155,19 +149,16 @@ class IngredientService:
       if getattr(keep, field) is None and getattr(doomed, field) is not None:
         setattr(keep, field, getattr(doomed, field))
 
+    # Take the highest calorie value between the two
+    keep_cal = keep.calories_per_100g
+    doomed_cal = doomed.calories_per_100g
+    if keep_cal is None and doomed_cal is not None:
+      keep.calories_per_100g = doomed_cal
+    elif keep_cal is not None and doomed_cal is not None:
+      keep.calories_per_100g = max(keep_cal, doomed_cal)
+
     await db.delete(doomed)
     await db.commit()
     await db.refresh(keep)
     return keep
 
-  @staticmethod
-  async def toggle_availability(db: AsyncSession, ingredient_id: int) -> Optional[Ingredient]:
-    result = await db.execute(select(Ingredient).filter(Ingredient.id == ingredient_id))
-    db_ingredient = result.scalar_one_or_none()
-    if not db_ingredient:
-      return None
-
-    db_ingredient.is_available = not db_ingredient.is_available
-    await db.commit()
-    await db.refresh(db_ingredient)
-    return db_ingredient

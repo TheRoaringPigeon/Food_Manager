@@ -154,21 +154,6 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
               <div className="space-y-1.5">
                 {ingredientRows.map((row, i) => (
                   <div key={i} className="flex gap-2 items-center">
-                    {/* Availability dot — always rendered to keep layout stable */}
-                    <span
-                      className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                        row.ingredient_id != null
-                          ? (row.is_available ? 'bg-green-500' : 'bg-red-500')
-                          : 'invisible'
-                      }`}
-                      title={
-                        row.ingredient_id != null
-                          ? (row.is_available ? 'In pantry' : 'Out of stock')
-                          : undefined
-                      }
-                    />
-
-                    {/* Combo-box name input */}
                     <div className="relative flex-1">
                       <input
                         autoComplete="off"
@@ -177,7 +162,7 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
                         value={row.name}
                         onFocus={() => setOpenDropdown(i)}
                         onBlur={() => setTimeout(() => setOpenDropdown(null), 150)}
-                        onChange={e => updateRow(i, { name: e.target.value, ingredient_id: undefined, is_available: undefined })}
+                        onChange={e => updateRow(i, { name: e.target.value, ingredient_id: undefined })}
                       />
                       {openDropdown === i && filterPantry(row.name).length > 0 && (
                         <ul className="absolute z-20 left-0 right-0 top-full mt-0.5 background-surface border border-line rounded shadow-lg max-h-40 overflow-y-auto text-sm">
@@ -191,12 +176,10 @@ export default function RecipeDetailModal({ recipe, onClose, onSaved, onDeleted 
                                   updateRow(i, {
                                     ingredient_id: ing.id,
                                     name: ing.name,
-                                    is_available: ing.is_available,
                                   })
                                   setOpenDropdown(null)
                                 }}
                               >
-                                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ing.is_available ? 'bg-green-500' : 'bg-red-500'}`} />
                                 <span className="flex-1">{ing.name}</span>
                               </button>
                             </li>

@@ -14,7 +14,6 @@ class TestIngredientCreation:
     data = response.json()
     assert data["name"] == sample_ingredient_data["name"]
     assert data["ingredient_type"] == sample_ingredient_data["ingredient_type"]
-    assert data["is_available"] is True
     assert "id" in data
     assert "created_at" in data
 
@@ -96,27 +95,6 @@ class TestIngredientRetrieval:
     assert len(data) == 1
     assert data[0]["ingredient_type"] == "produce"
 
-  async def test_filter_by_availability(self, client, sample_ingredient_data):
-    """Test filtering ingredients by availability"""
-    create_response = await client.post(
-        f"{API_CONTEXT_PATH}/ingredients",
-        json=sample_ingredient_data
-    )
-    ingredient_id = create_response.json()["id"]
-
-    # Toggle availability off
-    await client.post(f"{API_CONTEXT_PATH}/ingredients/{ingredient_id}/availability")
-
-    # Filter for unavailable
-    response = await client.get(
-        f"{API_CONTEXT_PATH}/ingredients",
-        params={"is_available": False}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["is_available"] is False
-
   async def test_search_ingredients(self, client, sample_ingredient_data):
     """Test searching ingredients by name"""
     await client.post(f"{API_CONTEXT_PATH}/ingredients", json=sample_ingredient_data)
@@ -183,23 +161,3 @@ class TestIngredientDelete:
     assert response.status_code == 404
 
 
-class TestIngredientAvailability:
-  """Tests for toggling availability"""
-
-  async def test_toggle_availability(self, client, sample_ingredient_data):
-    """Test toggling availability status"""
-    create_response = await client.post(
-        f"{API_CONTEXT_PATH}/ingredients",
-        json=sample_ingredient_data
-    )
-    ingredient_id = create_response.json()["id"]
-
-    # Toggle off
-    response = await client.post(f"{API_CONTEXT_PATH}/ingredients/{ingredient_id}/availability")
-    assert response.status_code == 200
-    assert response.json()["is_available"] is False
-
-    # Toggle back on
-    response = await client.post(f"{API_CONTEXT_PATH}/ingredients/{ingredient_id}/availability")
-    assert response.status_code == 200
-    assert response.json()["is_available"] is True
