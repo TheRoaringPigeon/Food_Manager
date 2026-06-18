@@ -72,6 +72,14 @@ class CrawlerService:
     self.app.state.crawler.start_time = datetime.now()
     self.app.state.crawler.end_time = None
     self.app.state.crawler.error_message = None
+    self.app.state.crawler.cancel_event.clear()
+
+  async def stop_crawl(self):
+    if self.app.state.crawler.status != CrawlStatus.RUNNING:
+      return {"message": "No crawl is currently running", "status": self.app.state.crawler.status}
+
+    self.app.state.crawler.cancel_event.set()
+    return {"message": "Cancellation requested — crawler will stop after the current URL", "status": "cancelling"}
 
   async def _run_crawler(self):
     """Iterate registered adapters sequentially, crawling each site's recipes."""
@@ -84,10 +92,20 @@ class CrawlerService:
         await self._release_lock()
         return
 
+      cancel_event = self.app.state.crawler.cancel_event
+
       async with aiohttp.ClientSession(headers=_HTTP_HEADERS) as session:
         for adapter in adapters:
-          all_urls = await adapter.get_recipe_urls()
-          new_urls = await RecipePersistence.check_recipe_urls_against_db(all_urls)
+          if cancel_event.is_set():
+            logger.info("Crawl cancellation requested — stopping before next adapter.")
+            break
+
+          try:
+            all_urls = await adapter.get_recipe_urls()
+            new_urls = await RecipePersistence.check_recipe_urls_against_db(all_urls)
+          except Exception as e:
+            logger.error(f"[{adapter.site_id}] Failed to get URLs, skipping adapter: {e}")
+            continue
 
           if not new_urls:
             logger.info(f"[{adapter.site_id}] No new URLs to crawl.")
@@ -97,18 +115,30 @@ class CrawlerService:
           logger.info(f"[{adapter.site_id}] Crawling {len(new_urls)} new recipes...")
 
           for url in new_urls:
-            result = await adapter.fetch_and_parse(session, url)
-            self.app.state.crawler.processed_urls += 1
+            if cancel_event.is_set():
+              logger.info(f"[{adapter.site_id}] Crawl cancellation requested — stopping mid-batch.")
+              break
 
-            if result is None:
+            try:
+              result = await adapter.fetch_and_parse(session, url)
+              self.app.state.crawler.processed_urls += 1
+
+              if result is None:
+                self.app.state.crawler.fail_count += 1
+                logger.warning(f"[{adapter.site_id}] Skipping {url}: parse returned None")
+              else:
+                await self.persistence.save_recipe(result)
+                self.app.state.crawler.success_count += 1
+            except Exception as e:
               self.app.state.crawler.fail_count += 1
-              logger.warning(f"[{adapter.site_id}] Skipping {url}: parse returned None")
-            else:
-              self.app.state.crawler.success_count += 1
-              await self.persistence.save_recipe(result)
+              logger.error(f"[{adapter.site_id}] Failed to process {url}: [{type(e).__name__}] {e}")
 
-      self._mark_crawler_completed()
-      logger.info(f"Crawl complete. {self.app.state.crawler.processed_urls} recipes processed.")
+      if cancel_event.is_set():
+        self._mark_crawler_cancelled()
+        logger.info(f"Crawl cancelled. {self.app.state.crawler.processed_urls} recipes processed before stop.")
+      else:
+        self._mark_crawler_completed()
+        logger.info(f"Crawl complete. {self.app.state.crawler.processed_urls} recipes processed.")
 
     except Exception as e:
       logger.error(f"Crawler failed: {e}")
@@ -116,6 +146,10 @@ class CrawlerService:
 
     finally:
       await self._release_lock()
+
+  def _mark_crawler_cancelled(self):
+    self.app.state.crawler.status = CrawlStatus.CANCELLED
+    self.app.state.crawler.end_time = datetime.now()
 
   def _mark_crawler_idle(self, error_message: str):
     self.app.state.crawler.status = CrawlStatus.IDLE
