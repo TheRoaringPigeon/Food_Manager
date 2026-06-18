@@ -14,7 +14,8 @@
       "Bash(xargs grep -l \"TODO\\\\|FIXME\\\\|XXX\\\\|BUG\")",
       "PowerShell(aws cloudformation describe-stacks *)",
       "PowerShell(aws cloudformation describe-stack-resources *)",
-      "PowerShell(aws bedrock list-inference-profiles *)"
+      "PowerShell(aws bedrock list-inference-profiles *)",
+      "Bash(python *)"
     ],
     "deny": [
       "Read(.env)",

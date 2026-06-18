@@ -47,6 +47,14 @@ async def get_crawl_status(
   return await service.check_crawl_status()
 
 
+@router.post("/stop")
+async def stop_crawl_endpoint(
+    service: CrawlerService = Depends(get_crawler_service)
+):
+  """Request graceful cancellation of the running crawl"""
+  return await service.stop_crawl()
+
+
 @router.post("/unlock")
 async def force_unlock(
     service: CrawlerService = Depends(get_crawler_service)

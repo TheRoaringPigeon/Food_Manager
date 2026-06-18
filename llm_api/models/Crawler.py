@@ -4,6 +4,7 @@ from database import Base
 from datetime import datetime
 from typing import Optional
 from enum import Enum
+import asyncio
 
 class CrawlLock(Base):
   __tablename__ = "crawl_lock"
@@ -20,6 +21,7 @@ class CrawlStatus(str, Enum):
   RUNNING = "running"
   COMPLETED = "completed"
   FAILED = "failed"
+  CANCELLED = "cancelled"
 
 
 class CrawlerState:
@@ -32,3 +34,4 @@ class CrawlerState:
     self.success_count: int = 0
     self.fail_count: int = 0
     self.error_message: Optional[str] = None
+    self.cancel_event: asyncio.Event = asyncio.Event()
