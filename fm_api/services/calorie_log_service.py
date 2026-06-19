@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, cast, Date
 from typing import List, Optional
-from datetime import datetime, timezone, date
+from datetime import datetime, date
 
 from models.calorie_log import CalorieLog, EntryTypeEnum
 from models.ingredient import Ingredient
@@ -99,7 +99,7 @@ class CalorieLogService:
                     if estimate.per_serving is not None and payload.servings_eaten:
                         calories = estimate.per_serving * payload.servings_eaten
 
-        logged_at = payload.logged_at or datetime.now(timezone.utc)
+        logged_at = payload.logged_at or datetime.utcnow()
 
         db_log = CalorieLog(
             user_id=user_id,

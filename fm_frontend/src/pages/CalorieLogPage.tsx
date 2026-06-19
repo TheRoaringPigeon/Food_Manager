@@ -12,6 +12,8 @@ import {
 } from '../api/calorieLog'
 import { listIngredients } from '../api/ingredients'
 import { listRecipes } from '../api/recipes'
+import BarcodeScanner from '../components/BarcodeScanner'
+import { lookupBarcode } from '../api/barcode'
 
 type Tab = 'ingredient' | 'recipe' | 'freeform'
 
@@ -72,6 +74,11 @@ export default function CalorieLogPage() {
   // Freeform tab state
   const [ffName, setFfName] = useState('')
   const [ffCals, setFfCals] = useState('')
+  const [ffCalPerServing, setFfCalPerServing] = useState<number | null>(null)
+  const [ffServingDesc, setFfServingDesc] = useState('')
+  const [ffServings, setFfServings] = useState(1)
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [barcodeStatus, setBarcodeStatus] = useState<'idle' | 'loading' | 'notfound'>('idle')
 
   // Summary & history
   const [todayTotal, setTodayTotal] = useState(0)
@@ -139,6 +146,23 @@ export default function CalorieLogPage() {
     ? Math.round(parseFloat(quantityG) * selectedIng.calories_per_100g / 100)
     : null
 
+  async function handleBarcodeResult(barcode: string) {
+    setScannerOpen(false)
+    setBarcodeStatus('loading')
+    const product = await lookupBarcode(barcode)
+    if (product) {
+      setFfName(product.name)
+      if (product.caloriesPerServing > 0) {
+        setFfCalPerServing(product.caloriesPerServing)
+        setFfServingDesc(product.servingDescription)
+      }
+    } else {
+      setBarcodeStatus('notfound')
+    }
+    setFfServings(1)
+    if (product) setBarcodeStatus('idle')
+  }
+
   async function handleSubmit() {
     setFormError(null)
     setSubmitting(true)
@@ -167,11 +191,14 @@ export default function CalorieLogPage() {
         })
       } else {
         if (!ffName.trim()) { setFormError('Enter a food name'); setSubmitting(false); return }
-        if (!ffCals || isNaN(parseFloat(ffCals))) { setFormError('Enter calorie count'); setSubmitting(false); return }
+        const totalCals = ffCalPerServing != null
+          ? ffCalPerServing * ffServings
+          : parseFloat(ffCals)
+        if (isNaN(totalCals) || totalCals < 0) { setFormError('Enter calorie count'); setSubmitting(false); return }
         await createCalorieLog({
           entry_type: 'freeform',
           food_name: ffName.trim(),
-          calories: parseFloat(ffCals),
+          calories: totalCals,
           meal_type: meal,
           notes: notes || undefined,
         })
@@ -179,7 +206,7 @@ export default function CalorieLogPage() {
       // Reset form
       setSelectedIng(null); setIngSearch(''); setQuantityG('')
       setSelectedRecipe(null); setRecipeSearch(''); setServings(1); setRecipeCalPerServing(null); setRecipeEstimate('')
-      setFfName(''); setFfCals('')
+      setFfName(''); setFfCals(''); setFfCalPerServing(null); setFfServingDesc(''); setFfServings(1); setBarcodeStatus('idle')
       setNotes('')
       await refreshData()
     } catch (e: any) {
@@ -206,6 +233,13 @@ export default function CalorieLogPage() {
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
+      {scannerOpen && (
+        <BarcodeScanner
+          onScan={handleBarcodeResult}
+          onClose={() => setScannerOpen(false)}
+        />
+      )}
+
       <h1 className="text-2xl font-semibold foreground-content">Calorie Log</h1>
 
       {/* Today's summary */}
@@ -368,6 +402,29 @@ export default function CalorieLogPage() {
           {/* Free-form tab */}
           {tab === 'freeform' && (
             <>
+              {/* Scan button — mobile only */}
+              <button
+                type="button"
+                onClick={() => { setBarcodeStatus('idle'); setScannerOpen(true) }}
+                className="md:hidden self-start flex items-center gap-2 px-3 py-2 border border-line rounded text-sm foreground-subtle hover:foreground-content hover:border-primary transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                  <path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                  <line x1="7" y1="12" x2="17" y2="12" />
+                </svg>
+                Scan barcode
+              </button>
+
+              {barcodeStatus === 'loading' && (
+                <p className="text-xs foreground-subtle animate-pulse">Looking up product…</p>
+              )}
+              {barcodeStatus === 'notfound' && (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                  Product not found — enter details manually below.
+                </p>
+              )}
+
               <div>
                 <label className="block text-xs font-medium foreground-subtle mb-1">Food name</label>
                 <input
@@ -378,18 +435,57 @@ export default function CalorieLogPage() {
                   className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium foreground-subtle mb-1">Calories (kcal)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={ffCals}
-                  onChange={e => setFfCals(e.target.value)}
-                  placeholder="e.g. 180"
-                  className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
+
+              {/* Serving picker — shown when a barcode gave us per-serving calorie data */}
+              {ffCalPerServing != null ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-medium foreground-subtle">
+                      Servings eaten
+                      {ffServingDesc && <span className="font-normal foreground-dim ml-1">({ffServingDesc} = {ffCalPerServing} kcal each)</span>}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => { setFfCalPerServing(null); setFfServingDesc(''); setFfServings(1) }}
+                      className="text-xs foreground-dim hover:foreground-subtle underline"
+                    >
+                      Enter manually
+                    </button>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {SERVING_OPTIONS.map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setFfServings(s)}
+                        className={`px-3 py-1 text-sm rounded border ${
+                          ffServings === s
+                            ? 'border-primary background-primary-soft foreground-primary-dim'
+                            : 'border-line foreground-subtle hover:border-primary'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs foreground-primary mt-1.5">
+                    ≈ {Math.round(ffCalPerServing * ffServings)} kcal total
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-medium foreground-subtle mb-1">Calories (kcal)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={ffCals}
+                    onChange={e => setFfCals(e.target.value)}
+                    placeholder="e.g. 180"
+                    className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              )}
             </>
           )}
 
