@@ -8,6 +8,7 @@ from models.ingredient import Ingredient
 from models.recipe import Recipe
 from models.recipe_ingredient import RecipeIngredient
 from schemas.calorie_log import CalorieLogCreate, DailyTotalResponse, RecipeCalorieEstimate
+from utils.unit_conversion import to_grams
 
 
 class CalorieLogService:
@@ -19,6 +20,15 @@ class CalorieLogService:
         if not recipe:
             return RecipeCalorieEstimate(is_estimate=False)
 
+        # Fast path: use stored value if already computed by the enrichment script
+        if recipe.calories_per_serving is not None:
+            return RecipeCalorieEstimate(
+                total_calories=round(recipe.calories_per_serving * (recipe.servings or 1), 1),
+                per_serving=recipe.calories_per_serving,
+                servings=recipe.servings,
+                is_estimate=False,
+            )
+
         ri_result = await db.execute(
             select(RecipeIngredient).filter(RecipeIngredient.recipe_id == recipe_id)
         )
@@ -27,20 +37,33 @@ class CalorieLogService:
         total = 0.0
         partial = False
         for ri in recipe_ingredients:
-            if ri.ingredient_id and ri.quantity is not None and ri.unit and ri.unit.lower() == 'g':
-                ing_result = await db.execute(
-                    select(Ingredient).filter(Ingredient.id == ri.ingredient_id)
-                )
-                ing = ing_result.scalar_one_or_none()
-                if ing and ing.calories_per_100g is not None:
-                    total += ri.quantity * ing.calories_per_100g / 100.0
-                else:
-                    partial = True
-            else:
+            if not ri.ingredient_id or ri.quantity is None:
                 partial = True
+                continue
+
+            ing_result = await db.execute(
+                select(Ingredient).filter(Ingredient.id == ri.ingredient_id)
+            )
+            ing = ing_result.scalar_one_or_none()
+            if not ing or ing.calories_per_100g is None:
+                partial = True
+                continue
+
+            if ri.unit is not None:
+                grams = to_grams(ri.quantity, ri.unit)
+            elif ing.grams_per_whole_unit is not None:
+                grams = ri.quantity * ing.grams_per_whole_unit
+            else:
+                grams = None
+
+            if grams is None:
+                partial = True
+                continue
+
+            total += grams * ing.calories_per_100g / 100.0
 
         servings = recipe.servings
-        per_serving = (total / servings) if servings and servings > 0 else None
+        per_serving = (total / servings) if (servings and servings > 0 and total > 0) else None
 
         return RecipeCalorieEstimate(
             total_calories=round(total, 1) if total > 0 else None,

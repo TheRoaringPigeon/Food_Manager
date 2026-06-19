@@ -25,6 +25,7 @@ class Ingredient(Base):
     tags = Column(Text, nullable=True)
     image_url = Column(String(500), nullable=True)
     calories_per_100g = Column(Float, nullable=True)
+    grams_per_whole_unit = Column(Float, nullable=True)
     usda_fdc_id = Column(String(20), nullable=True, index=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Text, DateTime, Enum, Float
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -29,6 +29,7 @@ class Recipe(Base):
   recipe_type = Column(Enum(RecipeTypeEnum), nullable=False, index=True)
   tags = Column(Text, nullable=True)
   image_url = Column(String(500), nullable=True)
+  calories_per_serving = Column(Float, nullable=True)
   created_at = Column(DateTime, server_default=func.now(), nullable=False)
   updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 
