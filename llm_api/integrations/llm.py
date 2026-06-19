@@ -366,6 +366,105 @@ Return ONLY the JSON. No commentary."""
     except (ValueError, TypeError, json.JSONDecodeError, KeyError):
       return 0
 
+  async def parse_voice_transcript(self, transcript: str) -> list[dict]:
+    """
+    Parse a voice transcript into a list of food items with quantity and unit.
+    Returns [{"name": str, "quantity": float|null, "unit": str|null}, ...]
+    """
+    prompt = f"""You are parsing a voice message about food consumption.
+
+Transcript: "{transcript}"
+
+Extract every food item mentioned. Return a JSON array where each element has:
+- "name": the food name (lowercase, plain, e.g. "granola bar", "grapes", "all purpose flour")
+- "quantity": a number (e.g. 1, 12, 0.5) or null if not stated
+- "unit": the unit (e.g. "piece", "cup", "slice", "bar", "g", "oz") or null if not clear
+
+Example output for "I had a granola bar and 12 grapes and half a cup of yogurt":
+[
+  {{"name": "granola bar", "quantity": 1, "unit": "bar"}},
+  {{"name": "grapes", "quantity": 12, "unit": "piece"}},
+  {{"name": "yogurt", "quantity": 0.5, "unit": "cup"}}
+]
+
+Return ONLY the JSON array. No commentary."""
+
+    resp = await self.chat([{"role": "user", "content": prompt}])
+    content = resp["message"]["content"].strip()
+    try:
+      result = _extract_json_from_response(content)
+      if isinstance(result, list):
+        return result
+    except (ValueError, json.JSONDecodeError):
+      pass
+    return []
+
+  async def estimate_portion_grams(self, food_name: str, quantity: float, unit: str | None) -> float | None:
+    """
+    Ask the LLM to estimate how many grams a given quantity of a food item weighs.
+    Used when the unit is count-based (bar, piece, slice, etc.) and we have no
+    grams_per_whole_unit on record.
+    Returns None if the model cannot produce a usable number.
+    """
+    unit_phrase = f"{quantity} {unit}" if unit else str(quantity)
+    prompt = f"""You are a nutrition assistant estimating food weights.
+
+How many grams does {unit_phrase} of "{food_name}" weigh in total?
+
+Reply with ONLY a single number (the total grams, no decimal needed). No units. No explanation.
+Examples:
+  1 bar of granola bar → 40
+  12 piece of grapes → 60
+  1 slice of bread → 30
+  2 egg → 100"""
+
+    resp = await self.chat([{"role": "user", "content": prompt}])
+    raw = resp["message"]["content"].strip()
+    raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+    # Extract the first number we can find
+    match = re.search(r'\d+(?:\.\d+)?', raw)
+    if match:
+      try:
+        return float(match.group())
+      except ValueError:
+        pass
+    return None
+
+  async def match_ingredient(self, food_name: str, candidates: list[str]) -> str | None:
+    """
+    Given a food name and a list of database ingredient names, return the best
+    matching candidate string, or None if nothing is a reasonable match.
+    """
+    if not candidates:
+      return None
+    candidates_text = "\n".join(f"- {c}" for c in candidates)
+    prompt = f"""You are matching a food item to a database of known ingredients.
+
+Food item: "{food_name}"
+
+Database candidates:
+{candidates_text}
+
+Which candidate is the same food (allowing for spelling variants, hyphens, abbreviations, or minor naming differences)?
+Reply with ONLY the exact candidate string from the list above, or "none" if nothing is a reasonable match.
+No explanation."""
+
+    resp = await self.chat([{"role": "user", "content": prompt}])
+    answer = resp["message"]["content"].strip().strip('"').strip("'")
+    # Strip think blocks
+    answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL).strip()
+    if answer.lower() == "none" or not answer:
+      return None
+    # Verify it's actually one of the candidates (LLM sometimes paraphrases)
+    for c in candidates:
+      if c.lower() == answer.lower():
+        return c
+    # Fuzzy: check if any candidate is contained in the answer or vice versa
+    for c in candidates:
+      if c.lower() in answer.lower() or answer.lower() in c.lower():
+        return c
+    return None
+
   async def build_document(self, recipe: dict) -> str:
     """
     Ask the LLM to build a clean, readable text document from recipe data.

@@ -172,6 +172,13 @@ class FMApiClientAsync:
     resp.raise_for_status()
     return resp.json()
 
+  async def search_ingredients(self, query: str, limit: int = 10) -> list[dict]:
+    await self._ensure_token()
+    url = f"{self.base_url}/food-manager/api/ingredients"
+    resp = await self.client.get(url, params={"search": query, "limit": limit}, headers=self._auth_header())
+    resp.raise_for_status()
+    return resp.json()
+
   async def update_ingredient_nutrition(self, ingredient_id: int, calories_per_100g: float, usda_fdc_id: str) -> dict:
     await self._ensure_token()
     url = f"{self.base_url}/food-manager/api/ingredients/{ingredient_id}"
