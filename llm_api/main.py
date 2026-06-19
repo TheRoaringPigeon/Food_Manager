@@ -33,6 +33,7 @@ from routers.recipe import router as recipe_router
 from routers.recommendation_router import router as recommendation_router
 from routers.ingredient_vision_router import router as ingredient_vision_router
 from routers.ingredient_enrichment_router import router as ingredient_enrichment_router
+from routers.voice_log_router import router as voice_log_router
 from fastapi.middleware.cors import CORSMiddleware
 from utils.logger import get_logger
 
@@ -91,6 +92,7 @@ app.include_router(recipe_router)
 app.include_router(recommendation_router)
 app.include_router(ingredient_vision_router)
 app.include_router(ingredient_enrichment_router)
+app.include_router(voice_log_router)
 
 origins = ["*"]
 

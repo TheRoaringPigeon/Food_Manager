@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
@@ -7,17 +7,20 @@ import type { CalorieLog, MealType, EntryType, DailyTotal } from '../types/calor
 import { MEAL_TYPES } from '../types/calorieLog'
 import type { Ingredient } from '../types/ingredient'
 import type { Recipe } from '../types/recipe'
+import type { PendingVoiceEntry } from '../types/voiceLog'
 import {
   createCalorieLog, listCalorieLogs, getTodayTotal, getDailyHistory, deleteCalorieLog,
 } from '../api/calorieLog'
 import { listIngredients } from '../api/ingredients'
 import { listRecipes } from '../api/recipes'
+import { submitVoiceLog, pollVoiceJob } from '../api/voiceLog'
 import BarcodeScanner from '../components/BarcodeScanner'
 import { lookupBarcode } from '../api/barcode'
 
-type Tab = 'ingredient' | 'recipe' | 'freeform'
+type Tab = 'ingredient' | 'recipe' | 'freeform' | 'voice'
 
 const SERVING_OPTIONS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3]
+const VOICE_JOBS_KEY = 'fm_voice_pending_jobs'
 
 function mealBadgeClass(meal: MealType) {
   const map: Record<MealType, string> = {
@@ -43,6 +46,18 @@ function formatDate(dateStr: string) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString(undefined, {
     weekday: 'short', month: 'short', day: 'numeric',
   })
+}
+
+function loadPendingJobIds(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(VOICE_JOBS_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function savePendingJobIds(ids: string[]) {
+  localStorage.setItem(VOICE_JOBS_KEY, JSON.stringify(ids))
 }
 
 export default function CalorieLogPage() {
@@ -79,6 +94,16 @@ export default function CalorieLogPage() {
   const [ffServings, setFfServings] = useState(1)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [barcodeStatus, setBarcodeStatus] = useState<'idle' | 'loading' | 'notfound'>('idle')
+
+  // Voice tab state
+  const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'review' | 'uploading' | 'processing'>('idle')
+  const [voiceError, setVoiceError] = useState<string | null>(null)
+  const [interimText, setInterimText] = useState('')
+  const [editableTranscript, setEditableTranscript] = useState('')
+  const [pendingEntries, setPendingEntries] = useState<PendingVoiceEntry[]>([])
+  const recognitionRef = useRef<any>(null)
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pendingJobIdsRef = useRef<string[]>(loadPendingJobIds())
 
   // Summary & history
   const [todayTotal, setTodayTotal] = useState(0)
@@ -141,6 +166,64 @@ export default function CalorieLogPage() {
       }).catch(() => setRecipeEstimate(''))
     })
   }, [selectedRecipe])
+
+  // Voice polling — check any pending jobs from localStorage on mount
+  useEffect(() => {
+    const checkPendingJobs = async () => {
+      const jobIds = [...pendingJobIdsRef.current]
+      if (jobIds.length === 0) return
+
+      const completed: PendingVoiceEntry[] = []
+      const stillPending: string[] = []
+
+      await Promise.all(jobIds.map(async (jobId) => {
+        try {
+          const job = await pollVoiceJob(jobId)
+          if (job.status === 'done') {
+            completed.push({ jobId, job, mealOverrides: {}, calOverrides: {}, approvedIndices: [] })
+          } else if (job.status === 'error') {
+            // Drop errored jobs from localStorage
+          } else {
+            stillPending.push(jobId)
+          }
+        } catch {
+          // 404 or network error — drop it
+        }
+      }))
+
+      if (completed.length > 0) {
+        setPendingEntries(prev => {
+          const existingIds = new Set(prev.map(e => e.jobId))
+          return [...prev, ...completed.filter(c => !existingIds.has(c.jobId))]
+        })
+      }
+
+      pendingJobIdsRef.current = stillPending
+      savePendingJobIds(stillPending)
+      if (stillPending.length === 0) {
+        setVoiceStatus(prev => prev === 'processing' ? 'idle' : prev)
+      }
+    }
+
+    // Initial check
+    checkPendingJobs()
+
+    // Poll every 3s as long as there are pending jobs or we're processing
+    pollIntervalRef.current = setInterval(async () => {
+      await checkPendingJobs()
+      if (voiceStatus === 'processing') {
+        // nothing extra needed — checkPendingJobs handles it
+      }
+    }, 3000)
+
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+      recognitionRef.current?.stop()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When voiceStatus goes to 'processing', the job_id is already in localStorage
+  // and the polling interval above will pick it up automatically.
 
   const ingCalPreview = selectedIng?.calories_per_100g != null && quantityG
     ? Math.round(parseFloat(quantityG) * selectedIng.calories_per_100g / 100)
@@ -223,6 +306,155 @@ export default function CalorieLogPage() {
     } catch { /* ignore */ }
   }
 
+  // --- Voice / speech-to-text ---
+  function startListening() {
+    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
+    if (!SR) {
+      setVoiceError('Speech recognition is not supported in this browser. Try Chrome or Edge.')
+      return
+    }
+    setVoiceError(null)
+    setInterimText('')
+    setEditableTranscript('')
+
+    const recognition = new SR()
+    recognitionRef.current = recognition
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = 'en-US'
+
+    let finalAccumulated = ''
+
+    recognition.onresult = (e: any) => {
+      let interim = ''
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript
+        if (e.results[i].isFinal) {
+          finalAccumulated += t
+        } else {
+          interim = t
+        }
+      }
+      setEditableTranscript(finalAccumulated)
+      setInterimText(interim)
+    }
+
+    recognition.onerror = (e: any) => {
+      if (e.error === 'not-allowed') {
+        setVoiceError('Microphone access denied. Please allow microphone access and try again.')
+      } else if (e.error !== 'no-speech') {
+        setVoiceError(`Speech recognition error: ${e.error}`)
+      }
+      setVoiceStatus('idle')
+    }
+
+    recognition.onend = () => {
+      setInterimText('')
+      setVoiceStatus(prev => prev === 'listening' ? 'review' : prev)
+    }
+
+    recognition.start()
+    setVoiceStatus('listening')
+  }
+
+  function stopListening() {
+    recognitionRef.current?.stop()
+    // status transitions to 'review' via recognition.onend
+  }
+
+  function discardTranscript() {
+    recognitionRef.current?.abort()
+    setEditableTranscript('')
+    setInterimText('')
+    setVoiceStatus('idle')
+    setVoiceError(null)
+  }
+
+  async function sendTranscript() {
+    const text = editableTranscript.trim()
+    if (!text) return
+    setVoiceStatus('uploading')
+    try {
+      const { job_id } = await submitVoiceLog(text)
+      setEditableTranscript('')
+      const updated = [...pendingJobIdsRef.current, job_id]
+      pendingJobIdsRef.current = updated
+      savePendingJobIds(updated)
+      setVoiceStatus('processing')
+    } catch (err: any) {
+      setVoiceStatus('review')
+      setVoiceError(err.message || 'Send failed — try again')
+    }
+  }
+
+  // --- Pending approval actions ---
+  async function approveAll(entry: PendingVoiceEntry) {
+    const { job, mealOverrides, calOverrides } = entry
+    for (let i = 0; i < job.items.length; i++) {
+      const item = job.items[i]
+      const itemMeal = mealOverrides[i] ?? meal
+      const calStr = calOverrides[i]
+      const calories = calStr !== undefined
+        ? parseFloat(calStr)
+        : item.calories ?? undefined
+
+      if (calories == null || isNaN(calories as number)) continue
+
+      await createCalorieLog({
+        entry_type: 'freeform' as EntryType,
+        food_name: item.name + (item.quantity ? ` (${item.quantity}${item.unit ? ' ' + item.unit : ''})` : ''),
+        calories: calories as number,
+        meal_type: itemMeal,
+      })
+    }
+    dismissEntry(entry.jobId)
+    await refreshData()
+  }
+
+  async function approveItem(entry: PendingVoiceEntry, index: number) {
+    const item = entry.job.items[index]
+    const itemMeal = entry.mealOverrides[index] ?? meal
+    const calStr = entry.calOverrides[index]
+    const calories = calStr !== undefined
+      ? parseFloat(calStr)
+      : item.calories ?? undefined
+
+    if (calories == null || isNaN(calories as number)) return
+
+    await createCalorieLog({
+      entry_type: 'freeform' as EntryType,
+      food_name: item.name + (item.quantity ? ` (${item.quantity}${item.unit ? ' ' + item.unit : ''})` : ''),
+      calories: calories as number,
+      meal_type: itemMeal,
+    })
+
+    setPendingEntries(prev => prev.map(e => {
+      if (e.jobId !== entry.jobId) return e
+      const newApproved = [...e.approvedIndices, index]
+      // If all items are now approved, drop the whole entry
+      if (newApproved.length >= e.job.items.length) return null as any
+      return { ...e, approvedIndices: newApproved }
+    }).filter(Boolean))
+
+    await refreshData()
+  }
+
+  function dismissEntry(jobId: string) {
+    setPendingEntries(prev => prev.filter(e => e.jobId !== jobId))
+  }
+
+  function updateMealOverride(jobId: string, index: number, m: MealType) {
+    setPendingEntries(prev => prev.map(e =>
+      e.jobId === jobId ? { ...e, mealOverrides: { ...e.mealOverrides, [index]: m } } : e
+    ))
+  }
+
+  function updateCalOverride(jobId: string, index: number, val: string) {
+    setPendingEntries(prev => prev.map(e =>
+      e.jobId === jobId ? { ...e, calOverrides: { ...e.calOverrides, [index]: val } } : e
+    ))
+  }
+
   const goalPct = goal && todayTotal ? Math.min(100, Math.round((todayTotal / goal) * 100)) : null
   const grouped = groupByDate(logs)
 
@@ -274,13 +506,30 @@ export default function CalorieLogPage() {
         )}
       </div>
 
+      {/* Pending approval banner */}
+      {pendingEntries.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-amber-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <p className="text-sm text-amber-800 font-medium">
+              {pendingEntries.length === 1
+                ? '1 voice log awaiting approval'
+                : `${pendingEntries.length} voice logs awaiting approval`}
+            </p>
+          </div>
+          <a href="#pending-approval" className="text-xs text-amber-700 underline">Review ↓</a>
+        </div>
+      )}
+
       {/* Log food form */}
       <div className="background-surface border border-line rounded-lg p-5">
         <h2 className="text-sm font-semibold foreground-content mb-4">Log Food</h2>
 
         {/* Tabs */}
         <div className="flex gap-1 mb-4 border-b border-line">
-          {(['ingredient', 'recipe', 'freeform'] as Tab[]).map(t => (
+          {(['ingredient', 'recipe', 'freeform', 'voice'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => { setTab(t); setFormError(null) }}
@@ -489,49 +738,272 @@ export default function CalorieLogPage() {
             </>
           )}
 
-          {/* Shared fields */}
-          <div>
-            <label className="block text-xs font-medium foreground-subtle mb-1">Meal</label>
-            <div className="flex gap-1.5 flex-wrap">
-              {MEAL_TYPES.map(m => (
-                <button
-                  key={m}
-                  onClick={() => setMeal(m)}
-                  className={`px-3 py-1 text-sm rounded border capitalize ${
-                    meal === m
-                      ? 'border-primary background-primary-soft foreground-primary-dim'
-                      : 'border-line foreground-subtle hover:border-primary'
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium foreground-subtle mb-1">Notes (optional)</label>
-            <input
-              type="text"
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Any notes..."
-              className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+          {/* Voice tab */}
+          {tab === 'voice' && (
+            <div className="flex flex-col gap-4 py-2">
 
-          {formError && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{formError}</p>
+              {/* Listening state — live transcript */}
+              {voiceStatus === 'listening' && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+                    <p className="text-sm font-medium foreground-content">Listening…</p>
+                  </div>
+                  <div className="min-h-16 border border-line rounded px-3 py-2 text-sm foreground-content background-canvas">
+                    <span>{editableTranscript}</span>
+                    {interimText && (
+                      <span className="foreground-dim italic">{editableTranscript ? ' ' : ''}{interimText}</span>
+                    )}
+                    {!editableTranscript && !interimText && (
+                      <span className="foreground-dim italic">Start speaking…</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={stopListening}
+                    className="self-start px-4 py-2 bg-red-500 text-white rounded text-sm font-medium hover:bg-red-600"
+                  >
+                    Stop
+                  </button>
+                </div>
+              )}
+
+              {/* Review state — editable textarea + actions */}
+              {(voiceStatus === 'review' || voiceStatus === 'uploading') && (
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm foreground-subtle">Edit if needed, then send.</p>
+                  <textarea
+                    value={editableTranscript}
+                    onChange={e => setEditableTranscript(e.target.value)}
+                    rows={3}
+                    className="w-full border border-line rounded px-3 py-2 text-sm foreground-content focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    placeholder="What did you eat?"
+                  />
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={sendTranscript}
+                      disabled={!editableTranscript.trim() || voiceStatus === 'uploading'}
+                      className="px-4 py-2 background-primary text-white rounded text-sm font-medium hover:background-primary-hover disabled:opacity-50"
+                    >
+                      {voiceStatus === 'uploading' ? 'Sending…' : 'Send'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setVoiceStatus('idle'); setEditableTranscript('') }}
+                      disabled={voiceStatus === 'uploading'}
+                      className="px-4 py-2 border border-line foreground-subtle rounded text-sm hover:foreground-content disabled:opacity-50"
+                    >
+                      Re-record
+                    </button>
+                    <button
+                      type="button"
+                      onClick={discardTranscript}
+                      disabled={voiceStatus === 'uploading'}
+                      className="px-4 py-2 border border-line foreground-subtle rounded text-sm hover:foreground-content disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Idle / processing state — mic button */}
+              {(voiceStatus === 'idle' || voiceStatus === 'processing') && (
+                <div className="flex flex-col items-center gap-3">
+                  {voiceStatus === 'idle' && (
+                    <p className="text-sm foreground-subtle text-center">
+                      Tap the mic and speak what you ate.<br />
+                      <span className="text-xs foreground-dim">e.g. "I just had a granola bar and 12 grapes"</span>
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={voiceStatus === 'idle' ? startListening : undefined}
+                    disabled={voiceStatus === 'processing'}
+                    className={`w-20 h-20 rounded-full flex items-center justify-center transition-colors ${
+                      voiceStatus === 'processing'
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'background-primary text-white hover:background-primary-hover active:scale-95'
+                    }`}
+                  >
+                    {voiceStatus === 'processing' ? (
+                      <svg className="animate-spin w-7 h-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        <line x1="12" y1="19" x2="12" y2="23" />
+                        <line x1="8" y1="23" x2="16" y2="23" />
+                      </svg>
+                    )}
+                  </button>
+                  <p className="text-xs foreground-dim text-center">
+                    {voiceStatus === 'processing' && 'Processing with AI — results will appear below when ready'}
+                  </p>
+                </div>
+              )}
+
+              {voiceError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+                  {voiceError}
+                </p>
+              )}
+            </div>
           )}
 
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="self-start px-4 py-2 background-primary text-white rounded text-sm font-medium hover:background-primary-hover disabled:opacity-50"
-          >
-            {submitting ? 'Logging...' : 'Log food'}
-          </button>
+          {/* Shared fields (not shown on voice tab) */}
+          {tab !== 'voice' && (
+            <>
+              <div>
+                <label className="block text-xs font-medium foreground-subtle mb-1">Meal</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {MEAL_TYPES.map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setMeal(m)}
+                      className={`px-3 py-1 text-sm rounded border capitalize ${
+                        meal === m
+                          ? 'border-primary background-primary-soft foreground-primary-dim'
+                          : 'border-line foreground-subtle hover:border-primary'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium foreground-subtle mb-1">Notes (optional)</label>
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  placeholder="Any notes..."
+                  className="w-full border border-line rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              {formError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{formError}</p>
+              )}
+
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="self-start px-4 py-2 background-primary text-white rounded text-sm font-medium hover:background-primary-hover disabled:opacity-50"
+              >
+                {submitting ? 'Logging...' : 'Log food'}
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Pending Approval section */}
+      {pendingEntries.length > 0 && (
+        <div id="pending-approval" className="background-surface border border-amber-200 rounded-lg p-5">
+          <h2 className="text-sm font-semibold foreground-content mb-4">Pending Approval</h2>
+          <div className="flex flex-col gap-6">
+            {pendingEntries.map(entry => (
+              <div key={entry.jobId} className="border border-line rounded-lg p-4 flex flex-col gap-3">
+                {/* Transcript */}
+                <blockquote className="text-xs foreground-subtle italic border-l-2 border-amber-300 pl-3">
+                  "{entry.job.transcript}"
+                </blockquote>
+
+                {/* Items */}
+                <div className="flex flex-col gap-3">
+                  {entry.job.items.map((item, i) => {
+                    if (entry.approvedIndices.includes(i)) return null
+                    const itemMeal = entry.mealOverrides[i] ?? meal
+                    const calOverride = entry.calOverrides[i]
+                    const displayCal = calOverride !== undefined ? calOverride : (item.calories?.toString() ?? '')
+                    return (
+                      <div key={i} className="flex flex-col gap-2 pb-3 border-b border-divider last:border-0 last:pb-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium foreground-content capitalize">{item.name}</p>
+                            {(item.quantity || item.unit) && (
+                              <p className="text-xs foreground-subtle">
+                                {item.quantity}{item.unit ? ' ' + item.unit : ''}
+                                {item.source !== 'unknown' && (
+                                  <span className="ml-1.5 text-xs foreground-dim">({item.source})</span>
+                                )}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {item.calories != null ? (
+                              <span className="text-sm font-medium foreground-content">{Math.round(item.calories)} kcal</span>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={displayCal}
+                                  onChange={e => updateCalOverride(entry.jobId, i, e.target.value)}
+                                  placeholder="kcal"
+                                  className="w-20 border border-line rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                                <span className="text-xs foreground-dim">kcal</span>
+                              </div>
+                            )}
+                            <button
+                              onClick={() => approveItem(entry, i)}
+                              disabled={item.calories == null && !entry.calOverrides[i]}
+                              className="text-xs px-2 py-1 background-primary text-white rounded hover:background-primary-hover disabled:opacity-40"
+                            >
+                              Log
+                            </button>
+                          </div>
+                        </div>
+                        {/* Meal type for this item */}
+                        <div className="flex gap-1 flex-wrap">
+                          {MEAL_TYPES.map(m => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => updateMealOverride(entry.jobId, i, m)}
+                              className={`px-2 py-0.5 text-xs rounded border capitalize ${
+                                itemMeal === m
+                                  ? 'border-primary background-primary-soft foreground-primary-dim'
+                                  : 'border-line foreground-subtle hover:border-primary'
+                              }`}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Job-level actions */}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => approveAll(entry)}
+                    className="px-3 py-1.5 text-sm background-primary text-white rounded hover:background-primary-hover"
+                  >
+                    Approve all
+                  </button>
+                  <button
+                    onClick={() => dismissEntry(entry.jobId)}
+                    className="px-3 py-1.5 text-sm border border-line foreground-subtle rounded hover:foreground-content"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* History chart */}
       {history.length > 0 && (

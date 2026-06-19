@@ -54,6 +54,10 @@ TAG_METADATA = [
     {
       "name": "ingredients",
       "description": "Ingredient identification from images via Bedrock vision."
+    },
+    {
+      "name": "voice-log",
+      "description": "Voice-based food logging: upload audio, get async calorie resolution."
     }
 ]
 
@@ -71,3 +75,6 @@ LAMBDA_IDENTIFY_URL = os.getenv("LAMBDA_IDENTIFY_URL", "")
 LAMBDA_API_KEY = os.getenv("LAMBDA_API_KEY", "")
 
 USDA_API_KEY = os.getenv("USDA_API_KEY", "DEMO_KEY")
+
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))

@@ -23,6 +23,8 @@ services:
       - LAMBDA_IDENTIFY_URL=${LAMBDA_IDENTIFY_URL}
       - LAMBDA_API_KEY=${LAMBDA_API_KEY}
       - USDA_API_KEY=${USDA_API_KEY:-DEMO_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     env_file:
       - .env
     depends_on:
@@ -30,9 +32,20 @@ services:
         condition: service_started
       chromadb:
         condition: service_started
+      redis:
+        condition: service_started
     shm_size: '2gb'
     networks:
       - fm-net
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: fm_redis
+    networks:
+      - fm-net
+    volumes:
+      - redis_data:/data
     restart: unless-stopped
 
   fm_api:
@@ -155,6 +168,7 @@ volumes:
   postgres_data:
   ollama-models:
   chromadb_data:
+  redis_data:
 
 networks:
   fm-net:
