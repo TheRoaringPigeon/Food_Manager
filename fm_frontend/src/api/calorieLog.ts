@@ -17,11 +17,13 @@ export const listCalorieLogs = (params?: { start_date?: string; end_date?: strin
   return apiFetch<CalorieLog[]>(`/calorie-logs${qs ? `?${qs}` : ''}`)
 }
 
+const tzOffset = () => -new Date().getTimezoneOffset()
+
 export const getTodayTotal = () =>
-  apiFetch<number>('/calorie-logs/today')
+  apiFetch<number>(`/calorie-logs/today?tz_offset=${tzOffset()}`)
 
 export const getDailyHistory = (days = 14) =>
-  apiFetch<DailyTotal[]>(`/calorie-logs/history?days=${days}`)
+  apiFetch<DailyTotal[]>(`/calorie-logs/history?days=${days}&tz_offset=${tzOffset()}`)
 
 export const getRecipeCalorieEstimate = (recipeId: number) =>
   apiFetch<RecipeCalorieEstimate>(`/calorie-logs/recipe/${recipeId}/estimate`)

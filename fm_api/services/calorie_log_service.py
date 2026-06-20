@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, cast, Date
+from sqlalchemy import select, func, cast, Date, text
 from typing import List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from models.calorie_log import CalorieLog, EntryTypeEnum
 from models.ingredient import Ingredient
@@ -138,23 +138,29 @@ class CalorieLogService:
         return result.scalars().all()
 
     @staticmethod
-    async def get_today_total(db: AsyncSession, user_id: int) -> float:
-        today = date.today()
+    async def get_today_total(db: AsyncSession, user_id: int, tz_offset: int = 0) -> float:
+        tz_delta = timedelta(minutes=tz_offset)
+        now_local = datetime.utcnow() + tz_delta
+        today_local = now_local.date()
+        today_start_utc = datetime(today_local.year, today_local.month, today_local.day) - tz_delta
+        today_end_utc = today_start_utc + timedelta(days=1)
         result = await db.execute(
             select(func.coalesce(func.sum(CalorieLog.calories), 0.0)).filter(
                 CalorieLog.user_id == user_id,
-                cast(CalorieLog.logged_at, Date) == today,
+                CalorieLog.logged_at >= today_start_utc,
+                CalorieLog.logged_at < today_end_utc,
             )
         )
         return result.scalar() or 0.0
 
     @staticmethod
-    async def get_daily_history(db: AsyncSession, user_id: int, days: int = 14) -> List[DailyTotalResponse]:
+    async def get_daily_history(db: AsyncSession, user_id: int, days: int = 14, tz_offset: int = 0) -> List[DailyTotalResponse]:
+        local_day = cast(
+            CalorieLog.logged_at + text(f"interval '{tz_offset} minutes'"),
+            Date,
+        ).label("day")
         result = await db.execute(
-            select(
-                cast(CalorieLog.logged_at, Date).label("day"),
-                func.sum(CalorieLog.calories).label("total"),
-            )
+            select(local_day, func.sum(CalorieLog.calories).label("total"))
             .filter(CalorieLog.user_id == user_id)
             .group_by("day")
             .order_by("day")
