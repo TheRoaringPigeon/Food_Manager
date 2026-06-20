@@ -35,7 +35,7 @@ function mealBadgeClass(meal: MealType) {
 function groupByDate(logs: CalorieLog[]): [string, CalorieLog[]][] {
   const map = new Map<string, CalorieLog[]>()
   for (const log of logs) {
-    const day = log.logged_at.slice(0, 10)
+    const day = new Date(log.logged_at + 'Z').toLocaleDateString('en-CA') // parse as UTC, display in local date
     if (!map.has(day)) map.set(day, [])
     map.get(day)!.push(log)
   }

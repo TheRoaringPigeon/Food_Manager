@@ -27,19 +27,21 @@ async def create_calorie_log(
 
 @router.get("/today", response_model=float)
 async def get_today_total(
+    tz_offset: int = Query(0, ge=-720, le=840),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await CalorieLogService.get_today_total(db, current_user.id)
+    return await CalorieLogService.get_today_total(db, current_user.id, tz_offset)
 
 
 @router.get("/history", response_model=List[DailyTotalResponse])
 async def get_daily_history(
     days: int = Query(14, ge=1, le=90),
+    tz_offset: int = Query(0, ge=-720, le=840),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await CalorieLogService.get_daily_history(db, current_user.id, days)
+    return await CalorieLogService.get_daily_history(db, current_user.id, days, tz_offset)
 
 
 @router.get("/recipe/{recipe_id}/estimate", response_model=RecipeCalorieEstimate)
