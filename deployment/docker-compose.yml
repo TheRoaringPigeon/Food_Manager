@@ -145,6 +145,7 @@ services:
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
+      - OLLAMA_KEEP_ALIVE=-1
     volumes:
       - ollama-models:/root/.ollama
       - ./configs/ollama/entry.sh:/entry.sh:ro
