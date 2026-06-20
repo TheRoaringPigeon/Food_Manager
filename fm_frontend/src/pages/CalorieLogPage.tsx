@@ -13,14 +13,14 @@ import {
 } from '../api/calorieLog'
 import { listIngredients } from '../api/ingredients'
 import { listRecipes } from '../api/recipes'
-import { submitVoiceLog, pollVoiceJob } from '../api/voiceLog'
+import { submitVoiceLog } from '../api/voiceLog'
+import { useVoiceJobs } from '../context/VoiceJobContext'
 import BarcodeScanner from '../components/BarcodeScanner'
 import { lookupBarcode } from '../api/barcode'
 
 type Tab = 'ingredient' | 'recipe' | 'freeform' | 'voice'
 
 const SERVING_OPTIONS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3]
-const VOICE_JOBS_KEY = 'fm_voice_pending_jobs'
 
 function mealBadgeClass(meal: MealType) {
   const map: Record<MealType, string> = {
@@ -48,21 +48,10 @@ function formatDate(dateStr: string) {
   })
 }
 
-function loadPendingJobIds(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(VOICE_JOBS_KEY) || '[]')
-  } catch {
-    return []
-  }
-}
-
-function savePendingJobIds(ids: string[]) {
-  localStorage.setItem(VOICE_JOBS_KEY, JSON.stringify(ids))
-}
-
 export default function CalorieLogPage() {
   const { user } = useAuth()
   const goal = user?.calorie_goal ?? null
+  const { pendingJobCount, pendingEntries, setPendingEntries, addPendingJob, dismissEntry } = useVoiceJobs()
 
   const [tab, setTab] = useState<Tab>('ingredient')
   const [meal, setMeal] = useState<MealType>('dinner')
@@ -100,10 +89,7 @@ export default function CalorieLogPage() {
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [interimText, setInterimText] = useState('')
   const [editableTranscript, setEditableTranscript] = useState('')
-  const [pendingEntries, setPendingEntries] = useState<PendingVoiceEntry[]>([])
   const recognitionRef = useRef<any>(null)
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pendingJobIdsRef = useRef<string[]>(loadPendingJobIds())
 
   // Summary & history
   const [todayTotal, setTodayTotal] = useState(0)
@@ -167,63 +153,17 @@ export default function CalorieLogPage() {
     })
   }, [selectedRecipe])
 
-  // Voice polling — check any pending jobs from localStorage on mount
+  // Stop speech recognition on unmount
   useEffect(() => {
-    const checkPendingJobs = async () => {
-      const jobIds = [...pendingJobIdsRef.current]
-      if (jobIds.length === 0) return
+    return () => { recognitionRef.current?.stop() }
+  }, [])
 
-      const completed: PendingVoiceEntry[] = []
-      const stillPending: string[] = []
-
-      await Promise.all(jobIds.map(async (jobId) => {
-        try {
-          const job = await pollVoiceJob(jobId)
-          if (job.status === 'done') {
-            completed.push({ jobId, job, mealOverrides: {}, calOverrides: {}, approvedIndices: [] })
-          } else if (job.status === 'error') {
-            // Drop errored jobs from localStorage
-          } else {
-            stillPending.push(jobId)
-          }
-        } catch {
-          // 404 or network error — drop it
-        }
-      }))
-
-      if (completed.length > 0) {
-        setPendingEntries(prev => {
-          const existingIds = new Set(prev.map(e => e.jobId))
-          return [...prev, ...completed.filter(c => !existingIds.has(c.jobId))]
-        })
-      }
-
-      pendingJobIdsRef.current = stillPending
-      savePendingJobIds(stillPending)
-      if (stillPending.length === 0) {
-        setVoiceStatus(prev => prev === 'processing' ? 'idle' : prev)
-      }
+  // Reset voice tab to idle once all in-flight jobs finish
+  useEffect(() => {
+    if (pendingJobCount === 0 && voiceStatus === 'processing') {
+      setVoiceStatus('idle')
     }
-
-    // Initial check
-    checkPendingJobs()
-
-    // Poll every 3s as long as there are pending jobs or we're processing
-    pollIntervalRef.current = setInterval(async () => {
-      await checkPendingJobs()
-      if (voiceStatus === 'processing') {
-        // nothing extra needed — checkPendingJobs handles it
-      }
-    }, 3000)
-
-    return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-      recognitionRef.current?.stop()
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // When voiceStatus goes to 'processing', the job_id is already in localStorage
-  // and the polling interval above will pick it up automatically.
+  }, [pendingJobCount]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ingCalPreview = selectedIng?.calories_per_100g != null && quantityG
     ? Math.round(parseFloat(quantityG) * selectedIng.calories_per_100g / 100)
@@ -377,9 +317,7 @@ export default function CalorieLogPage() {
     try {
       const { job_id } = await submitVoiceLog(text)
       setEditableTranscript('')
-      const updated = [...pendingJobIdsRef.current, job_id]
-      pendingJobIdsRef.current = updated
-      savePendingJobIds(updated)
+      addPendingJob(job_id)
       setVoiceStatus('processing')
     } catch (err: any) {
       setVoiceStatus('review')
@@ -439,9 +377,6 @@ export default function CalorieLogPage() {
     await refreshData()
   }
 
-  function dismissEntry(jobId: string) {
-    setPendingEntries(prev => prev.filter(e => e.jobId !== jobId))
-  }
 
   function updateMealOverride(jobId: string, index: number, m: MealType) {
     setPendingEntries(prev => prev.map(e =>
@@ -506,20 +441,31 @@ export default function CalorieLogPage() {
         )}
       </div>
 
-      {/* Pending approval banner */}
-      {pendingEntries.length > 0 && (
+      {/* Voice status banner — processing or awaiting approval */}
+      {(pendingJobCount > 0 || pendingEntries.length > 0) && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-amber-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
+            {pendingJobCount > 0 ? (
+              <svg className="animate-spin w-4 h-4 text-amber-600 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-amber-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            )}
             <p className="text-sm text-amber-800 font-medium">
-              {pendingEntries.length === 1
+              {pendingJobCount > 0 && pendingEntries.length === 0 && 'Processing voice log…'}
+              {pendingJobCount > 0 && pendingEntries.length > 0 && `Processing voice log · ${pendingEntries.length} awaiting approval`}
+              {pendingJobCount === 0 && (pendingEntries.length === 1
                 ? '1 voice log awaiting approval'
-                : `${pendingEntries.length} voice logs awaiting approval`}
+                : `${pendingEntries.length} voice logs awaiting approval`)}
             </p>
           </div>
-          <a href="#pending-approval" className="text-xs text-amber-700 underline">Review ↓</a>
+          {pendingEntries.length > 0 && (
+            <a href="#pending-approval" className="text-xs text-amber-700 underline">Review ↓</a>
+          )}
         </div>
       )}
 

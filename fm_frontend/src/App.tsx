@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider, useTheme, type ThemeId, THEMES } from './context/ThemeContext'
 import { CartProvider } from './context/CartContext'
+import { VoiceJobProvider } from './context/VoiceJobContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
@@ -37,8 +38,9 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <CartProvider>
-          <ThemeSync />
-          <BrowserRouter basename={import.meta.env.VITE_BASE_PATH || '/'}>
+          <VoiceJobProvider>
+            <ThemeSync />
+            <BrowserRouter basename={import.meta.env.VITE_BASE_PATH || '/'}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
@@ -62,7 +64,8 @@ export default function App() {
                 </Route>
               </Route>
             </Routes>
-          </BrowserRouter>
+            </BrowserRouter>
+          </VoiceJobProvider>
         </CartProvider>
       </AuthProvider>
     </ThemeProvider>

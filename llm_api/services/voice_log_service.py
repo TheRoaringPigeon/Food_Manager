@@ -144,7 +144,7 @@ class VoiceLogService:
             async with httpx.AsyncClient(timeout=15.0) as http:
                 resp = await http.get(_USDA_SEARCH_URL, params={
                     "query": name,
-                    "dataType": "Foundation,SR Legacy",
+                    "dataType": "Foundation,SR Legacy,Survey (FNDDS)",
                     "pageSize": 5,
                     "api_key": USDA_API_KEY,
                 })

@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react'
 import { NavLink, Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { useVoiceJobs } from '../context/VoiceJobContext'
 
 export default function Layout() {
   const { user, logout, isAdmin } = useAuth()
   const { cartCount } = useCart()
+  const { pendingJobCount, pendingEntries } = useVoiceJobs()
+  const voiceBadge = pendingJobCount + pendingEntries.length
   const navigate = useNavigate()
   const location = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -52,21 +55,29 @@ export default function Layout() {
 
           {/* Desktop nav */}
           <nav className="hidden md:flex gap-1 ml-4">
-            {navItems.map(({ to, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'background-primary-soft foreground-primary-dim'
-                      : 'foreground-subtle hover:foreground-content hover:background-surface-raised'
-                  }`
-                }
-              >
-                {label}
-              </NavLink>
-            ))}
+            {navItems.map(({ to, label }) => {
+              const badge = to === '/calorie-log' ? voiceBadge : 0
+              return (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    `px-3 py-1.5 rounded text-sm font-medium transition-colors inline-flex items-center gap-1 ${
+                      isActive
+                        ? 'background-primary-soft foreground-primary-dim'
+                        : 'foreground-subtle hover:foreground-content hover:background-surface-raised'
+                    }`
+                  }
+                >
+                  {label}
+                  {badge > 0 && (
+                    <span className="w-4 h-4 bg-amber-500 text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center leading-none">
+                      {badge > 9 ? '9+' : badge}
+                    </span>
+                  )}
+                </NavLink>
+              )
+            })}
           </nav>
 
           {/* Right side — always visible */}
@@ -112,21 +123,29 @@ export default function Layout() {
               <span className="font-semibold foreground-content text-lg">Food Manager</span>
             </div>
             <nav className="flex flex-col gap-1 p-3 flex-1">
-              {navItems.map(({ to, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  className={({ isActive }) =>
-                    `px-3 py-3 rounded text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'background-primary-soft foreground-primary-dim'
-                        : 'foreground-subtle hover:foreground-content hover:background-surface-raised'
-                    }`
-                  }
-                >
-                  {label}
-                </NavLink>
-              ))}
+              {navItems.map(({ to, label }) => {
+                const badge = to === '/calorie-log' ? voiceBadge : 0
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    className={({ isActive }) =>
+                      `px-3 py-3 rounded text-sm font-medium transition-colors inline-flex items-center gap-2 ${
+                        isActive
+                          ? 'background-primary-soft foreground-primary-dim'
+                          : 'foreground-subtle hover:foreground-content hover:background-surface-raised'
+                      }`
+                    }
+                  >
+                    {label}
+                    {badge > 0 && (
+                      <span className="w-4 h-4 bg-amber-500 text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center leading-none">
+                        {badge > 9 ? '9+' : badge}
+                      </span>
+                    )}
+                  </NavLink>
+                )
+              })}
             </nav>
             <div className="p-3 border-t border-line flex flex-col gap-2">
               <Link
