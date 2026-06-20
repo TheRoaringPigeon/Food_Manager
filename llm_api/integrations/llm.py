@@ -169,10 +169,12 @@ class OllamaLLM:
     self.api_url = f"{self.host}/api"
     self.client = httpx.AsyncClient(timeout=300.0)
 
-  async def chat(self, messages: list[dict], stream: bool = False) -> dict:
+  async def chat(self, messages: list[dict], stream: bool = False, think: bool | None = None) -> dict:
     """Call the Ollama /chat API endpoint."""
     url = f"{self.api_url}/chat"
     payload = {"model": self.model, "messages": messages, "stream": stream}
+    if think is not None:
+      payload["think"] = think
     resp = await self.client.post(url, json=payload)
     resp.raise_for_status()
     return resp.json()
@@ -355,7 +357,7 @@ Return ONLY valid JSON: {{"index": <number 0-{len(candidates) - 1}>, "confidence
 If none are a reasonable match, return: {{"index": null, "confidence": "none"}}
 Return ONLY the JSON. No commentary."""
 
-    resp = await self.chat([{"role": "user", "content": prompt}])
+    resp = await self.chat([{"role": "user", "content": prompt}], think=False)
     content = resp["message"]["content"].strip()
     try:
       parsed = _extract_json_from_response(content)
@@ -389,7 +391,7 @@ Example output for "I had a granola bar and 12 grapes and half a cup of yogurt":
 
 Return ONLY the JSON array. No commentary."""
 
-    resp = await self.chat([{"role": "user", "content": prompt}])
+    resp = await self.chat([{"role": "user", "content": prompt}], think=False)
     content = resp["message"]["content"].strip()
     try:
       result = _extract_json_from_response(content)
@@ -418,7 +420,7 @@ Examples:
   1 slice of bread → 30
   2 egg → 100"""
 
-    resp = await self.chat([{"role": "user", "content": prompt}])
+    resp = await self.chat([{"role": "user", "content": prompt}], think=False)
     raw = resp["message"]["content"].strip()
     raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
     # Extract the first number we can find
@@ -449,7 +451,7 @@ Which candidate is the same food (allowing for spelling variants, hyphens, abbre
 Reply with ONLY the exact candidate string from the list above, or "none" if nothing is a reasonable match.
 No explanation."""
 
-    resp = await self.chat([{"role": "user", "content": prompt}])
+    resp = await self.chat([{"role": "user", "content": prompt}], think=False)
     answer = resp["message"]["content"].strip().strip('"').strip("'")
     # Strip think blocks
     answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL).strip()
