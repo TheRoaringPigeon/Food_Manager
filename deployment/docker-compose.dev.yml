@@ -1,0 +1,57 @@
+# Development overlay — run with:
+#   docker compose -p fm-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# Host ports are offset so dev and prod stacks can run simultaneously:
+#   fm_api:     http://localhost:5011   (prod: internal only behind Caddy)
+#   llm_api:    http://localhost:5012   (prod: internal only)
+#   frontend:   http://localhost:5183   (prod: internal only behind Caddy)
+#   postgres:   localhost:5433          (prod: 5432)
+#   pgAdmin:    http://localhost:5051   (prod: 5050)
+#   ChromaDB:   http://localhost:8001   (prod: 8000)
+#
+# Volumes are project-scoped (fm-dev_postgres_data, etc.) — completely separate
+# from prod data even though the database names inside are the same.
+#
+# First run: migrate both databases after the stack is healthy:
+#   docker compose -p fm-dev exec fm_api alembic upgrade head
+#   docker compose -p fm-dev exec llm_api alembic upgrade head
+#
+# To run the frontend locally (hot reload) against this dev backend instead of
+# the in-Docker Vite server:
+#   VITE_API_URL=http://localhost:5011 VITE_LLM_API_URL=http://localhost:5012 npm run dev
+
+services:
+  llm_api:
+    volumes:
+      - ../llm_api:/app
+    environment:
+      - APP_ENVIRONMENT=development
+    ports:
+      - "5012:5002"
+
+  fm_api:
+    volumes:
+      - ../fm_api:/app
+    environment:
+      - APP_ENVIRONMENT=development
+    ports:
+      - "5011:5001"
+
+  fm_frontend:
+    volumes:
+      - ../fm_frontend:/app
+      - /app/node_modules
+    ports:
+      - "5183:5173"
+
+  postgres:
+    ports:
+      - "5433:5432"
+
+  pgadmin:
+    ports:
+      - "5051:80"
+
+  chromadb:
+    ports:
+      - "8001:8000"

@@ -3,21 +3,14 @@ services:
     build:
       dockerfile: ../deployment/Dockerfile.llm-api
       context: ../llm_api
-    container_name: llm_api
-    ports:
-      - "5002:5002"
-    volumes:
-      - ../llm_api:/app
     environment:
       - PYTHONUNBUFFERED=1
-      - APP_ENVIRONMENT=development
       - DB_HOST=postgres
       - DB_NAME=llm_api
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
       - OLLAMA_HOST=http://fm-llm:11434
       - FM_API=http://fm_api:5001
-      # - CRAWL_LIMIT=5
       - FM_API_SERVICE_USERNAME=Admin
       - FM_API_SERVICE_PASSWORD=Admin@123
       - LAMBDA_IDENTIFY_URL=${LAMBDA_IDENTIFY_URL}
@@ -37,11 +30,11 @@ services:
     shm_size: '2gb'
     networks:
       - fm-net
+      - fm-llm-net
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    container_name: fm_redis
     networks:
       - fm-net
     volumes:
@@ -52,14 +45,8 @@ services:
     build:
       dockerfile: ../deployment/Dockerfile.fm-api
       context: ../fm_api
-    container_name: fm_api
-    ports:
-      - "5001:5001"
-    volumes:
-      - ../fm_api:/app
     environment:
       - PYTHONUNBUFFERED=1
-      - APP_ENVIRONMENT=development
       - DB_HOST=postgres
       - DB_NAME=fm_db
       - LLM_API=http://llm_api:5002
@@ -75,18 +62,13 @@ services:
         condition: service_started
     networks:
       - fm-net
+      - fm-llm-net
     restart: unless-stopped
 
   fm_frontend:
     build:
       context: ..
       dockerfile: deployment/Dockerfile.fm-frontend
-    container_name: fm_frontend
-    ports:
-      - "5173:5173"
-    volumes:
-      - ../fm_frontend:/app
-      - /app/node_modules
     environment:
       - VITE_API_URL=http://fm_api:5001
       - VITE_LLM_API_URL=http://llm_api:5002
@@ -99,14 +81,11 @@ services:
 
   postgres:
     image: postgres:16
-    container_name: postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: postgres
       SCRIPT_NAME: /pgadmin
-    ports:
-      - "5432:5432"
     networks:
       - fm-net
     volumes:
@@ -115,12 +94,9 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4
-    container_name: pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin123
-    ports:
-      - "5050:80"
     depends_on:
       postgres:
         condition: service_started
@@ -130,34 +106,8 @@ services:
       - ./configs/pgadmin/pgpass:/pgadmin4/pgpass
       - ./configs/pgadmin/servers.json:/pgadmin4/servers.json
 
-  ollama:
-    image: ollama/ollama
-    container_name: fm-llm
-    ports:
-      - "11434:11434"
-    networks:
-      - fm-net
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
-    runtime: nvidia
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - OLLAMA_KEEP_ALIVE=-1
-    volumes:
-      - ollama-models:/root/.ollama
-      - ./configs/ollama/entry.sh:/entry.sh:ro
-    entrypoint: ["/bin/sh", "/entry.sh"]
-    env_file:
-      - .env
-
   chromadb:
     image: chromadb/chroma:1.0.18.dev24
-    container_name: chroma_db
-    ports:
-      - "8000:8000"
     networks:
       - fm-net
     environment:
@@ -167,10 +117,12 @@ services:
 
 volumes:
   postgres_data:
-  ollama-models:
   chromadb_data:
   redis_data:
 
 networks:
   fm-net:
     driver: bridge
+  fm-llm-net:
+    external: true
+    name: fm-llm-net
