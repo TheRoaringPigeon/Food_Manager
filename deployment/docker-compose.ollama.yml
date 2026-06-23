@@ -1,0 +1,40 @@
+# Shared Ollama service — run this once independently so both dev and prod
+# stacks share a single LLM container (saves GPU/RAM).
+#
+# Start:  docker compose -f deployment/docker-compose.ollama.yml up -d
+# Stop:   docker compose -f deployment/docker-compose.ollama.yml down
+#
+# Creates the external network fm-llm-net that docker-compose.yml references.
+
+services:
+  ollama:
+    image: ollama/ollama
+    container_name: fm-llm
+    ports:
+      - "11434:11434"
+    networks:
+      - fm-llm-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - OLLAMA_KEEP_ALIVE=-1
+    volumes:
+      - ollama-models:/root/.ollama
+      - ./configs/ollama/entry.sh:/entry.sh:ro
+    entrypoint: ["/bin/sh", "/entry.sh"]
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  ollama-models:
+
+networks:
+  fm-llm-net:
+    name: fm-llm-net
+    driver: bridge

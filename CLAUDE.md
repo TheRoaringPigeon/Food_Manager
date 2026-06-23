@@ -4,13 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Running the stack
 
-All services run via Docker Compose from the `deployment/` directory:
+Ollama runs as a **shared** standalone service so only one GPU container runs regardless of dev/prod. Start it once and leave it running:
 
 ```bash
 cd deployment
-docker compose up -d --build   # start everything
-docker compose down            # stop
-docker compose restart fm_api  # restart a single service
+docker compose -f docker-compose.ollama.yml up -d
+```
+
+Dev and prod stacks run simultaneously with isolated data volumes and offset ports:
+
+```bash
+# Dev  (ports: fm_api→5011, llm_api→5012, frontend→5183, postgres→5433, pgadmin→5051)
+docker compose -p fm-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+
+# Prod (Caddy on 80/443, pgAdmin→5050, everything else internal)
+docker compose -p fm-prod -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+# Stop a stack
+docker compose -p fm-dev down
+docker compose -p fm-prod down
+
+# Restart a single service
+docker compose -p fm-dev restart fm_api
+
+# First-time dev DB migrations (after first up)
+docker compose -p fm-dev exec fm_api alembic upgrade head
+docker compose -p fm-dev exec llm_api alembic upgrade head
 ```
 
 Frontend only (local dev, hot reload):

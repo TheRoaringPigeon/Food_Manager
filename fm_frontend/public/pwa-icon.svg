@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Indigo background -->
+  <rect width="512" height="512" rx="96" fill="#4f46e5"/>
+  <!-- Bowl rim -->
+  <ellipse cx="256" cy="304" rx="168" ry="26" fill="#a5b4fc"/>
+  <!-- Bowl body -->
+  <path d="M88 304 Q88 424 256 424 Q424 424 424 304 Z" fill="white"/>
+  <!-- Food fill (warm amber) -->
+  <path d="M118 304 Q118 396 256 396 Q394 396 394 304 Z" fill="#fbbf24"/>
+  <!-- Steam wisps -->
+  <path d="M188 258 C183 240 196 222 188 204" stroke="white" stroke-width="16" stroke-linecap="round" fill="none"/>
+  <path d="M256 246 C251 228 264 210 256 192" stroke="white" stroke-width="16" stroke-linecap="round" fill="none"/>
+  <path d="M324 258 C319 240 332 222 324 204" stroke="white" stroke-width="16" stroke-linecap="round" fill="none"/>
+</svg>
