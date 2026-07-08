@@ -90,6 +90,7 @@ export default function CalorieLogPage() {
   const [interimText, setInterimText] = useState('')
   const [editableTranscript, setEditableTranscript] = useState('')
   const recognitionRef = useRef<any>(null)
+  const isListeningRef = useRef(false)
 
   // Summary & history
   const [todayTotal, setTodayTotal] = useState(0)
@@ -256,43 +257,50 @@ export default function CalorieLogPage() {
     setVoiceError(null)
     setInterimText('')
     setEditableTranscript('')
+    isListeningRef.current = true
 
     const recognition = new SR()
     recognitionRef.current = recognition
+    // continuous:true keeps listening until the user taps Stop.
+    // onresult always takes the last result slot, which on mobile contains
+    // the full cumulative phrase, so no doubled-text problem.
     recognition.continuous = true
     recognition.interimResults = true
     recognition.lang = 'en-US'
 
     recognition.onresult = (e: any) => {
-      // Rebuild from all results on every event (don't use e.resultIndex as the start).
-      // Mobile Chrome re-delivers already-final results with resultIndex=0 on each event,
-      // so a closure accumulator would double-count them ("I had aI had a granola bar").
-      let finalText = ''
-      let interim = ''
-      for (let i = 0; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript
-        if (e.results[i].isFinal) {
-          finalText += t
-        } else {
-          interim = t
-        }
+      // Mobile browsers build cumulative transcripts across result slots
+      // ("this" / "this is" / "this is a" / "this is a test"), so the last
+      // result always contains the complete phrase. Take it instead of concatenating.
+      const last = e.results[e.results.length - 1]
+      if (last.isFinal) {
+        setEditableTranscript(last[0].transcript)
+        setInterimText('')
+      } else {
+        setInterimText(last[0].transcript)
       }
-      setEditableTranscript(finalText)
-      setInterimText(interim)
+      
     }
 
     recognition.onerror = (e: any) => {
       if (e.error === 'not-allowed') {
+        isListeningRef.current = false
         setVoiceError('Microphone access denied. Please allow microphone access and try again.')
-      } else if (e.error !== 'no-speech') {
-        setVoiceError(`Speech recognition error: ${e.error}`)
+        setVoiceStatus('idle')
       }
-      setVoiceStatus('idle')
+      // 'no-speech' is normal on mobile when the browser times out mid-session;
+      // onend fires next and restarts recognition automatically.
     }
 
     recognition.onend = () => {
       setInterimText('')
-      setVoiceStatus(prev => prev === 'listening' ? 'review' : prev)
+      if (isListeningRef.current) {
+        // Mobile browsers stop the session after silence even with continuous:true.
+        // Restart immediately to keep the mic open until the user taps Stop.
+        try { recognition.start() } catch { /* already stopped intentionally */ }
+      } else {
+        setVoiceStatus(prev => prev === 'listening' ? 'review' : prev)
+      }
     }
 
     recognition.start()
@@ -300,11 +308,13 @@ export default function CalorieLogPage() {
   }
 
   function stopListening() {
+    isListeningRef.current = false
     recognitionRef.current?.stop()
     // status transitions to 'review' via recognition.onend
   }
 
   function discardTranscript() {
+    isListeningRef.current = false
     recognitionRef.current?.abort()
     setEditableTranscript('')
     setInterimText('')
