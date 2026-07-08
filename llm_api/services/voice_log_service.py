@@ -132,7 +132,14 @@ class VoiceLogService:
                         if grams:
                             logger.info("LLM estimated %sg for '%s' (%s %s)", grams, name, quantity, unit)
                     if grams is not None:
-                        result["calories"] = round(grams * matched["calories_per_100g"] / 100, 1)
+                        raw_calories = round(grams * matched["calories_per_100g"] / 100, 1)
+                        corrected = await self.llm.sanity_check_calories(name, quantity, unit, raw_calories)
+                        if corrected is not None:
+                            logger.warning(
+                                "Calorie sanity check corrected '%s': %.1f → %.1f kcal (local match '%s' kcal/100g=%.1f)",
+                                name, raw_calories, corrected, matched_name, matched["calories_per_100g"],
+                            )
+                        result["calories"] = corrected if corrected is not None else raw_calories
                     result["source"] = "local"
                     logger.info("Resolved '%s' locally via '%s'", name, matched_name)
                     return result
@@ -166,13 +173,31 @@ class VoiceLogService:
                             if grams:
                                 logger.info("LLM estimated %sg for '%s' (%s %s)", grams, name, quantity, unit)
                         if grams is not None:
-                            result["calories"] = round(grams * cal_per_100g / 100, 1)
+                            raw_calories = round(grams * cal_per_100g / 100, 1)
+                            corrected = await self.llm.sanity_check_calories(name, quantity, unit, raw_calories)
+                            if corrected is not None:
+                                logger.warning(
+                                    "Calorie sanity check corrected '%s': %.1f → %.1f kcal (USDA fdcId=%s kcal/100g=%.1f)",
+                                    name, raw_calories, corrected, best.get("fdcId"), cal_per_100g,
+                                )
+                            result["calories"] = corrected if corrected is not None else raw_calories
                         result["source"] = "usda"
                         logger.info("Resolved '%s' via USDA (fdcId=%s): %.1f kcal/100g",
                                     name, best.get("fdcId"), cal_per_100g)
                         return result
         except Exception as exc:
             logger.warning("USDA lookup failed for '%s': %s", name, exc)
+
+        # --- Pass 3: LLM direct knowledge fallback ---
+        try:
+            estimated = await self.llm.estimate_calories_direct(name, quantity, unit)
+            if estimated is not None:
+                result["calories"] = round(estimated, 1)
+                result["source"] = "llm"
+                logger.info("Resolved '%s' via LLM direct estimate: %.1f kcal", name, estimated)
+                return result
+        except Exception as exc:
+            logger.warning("LLM direct estimate failed for '%s': %s", name, exc)
 
         logger.info("Could not resolve calories for '%s'; user must enter manually", name)
         return result

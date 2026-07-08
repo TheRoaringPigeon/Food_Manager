@@ -350,6 +350,11 @@ Return ONLY valid JSON. No commentary."""
 
 Given the cooking ingredient "{ingredient_name}", pick which USDA entry best represents it as a generic, unbranded ingredient used in home cooking.
 
+IMPORTANT matching rules:
+- Prefer fresh, liquid, whole forms. For example, "milk" should match "Milk, whole" NOT "Milk, dry" or "Milk, condensed".
+- Avoid dried, powdered, dehydrated, condensed, sweetened, or concentrated variants unless the ingredient name explicitly requests them.
+- Avoid branded products.
+
 Candidates:
 {candidates_text}
 
@@ -447,7 +452,8 @@ Food item: "{food_name}"
 Database candidates:
 {candidates_text}
 
-Which candidate is the same food (allowing for spelling variants, hyphens, abbreviations, or minor naming differences)?
+Which candidate is the exact same food, allowing only for spelling variants, hyphens, or minor abbreviations?
+The form and preparation must match — do NOT match "milk" to "condensed milk", "milk powder", or "evaporated milk".
 Reply with ONLY the exact candidate string from the list above, or "none" if nothing is a reasonable match.
 No explanation."""
 
@@ -465,6 +471,76 @@ No explanation."""
     for c in candidates:
       if c.lower() in answer.lower() or answer.lower() in c.lower():
         return c
+    return None
+
+  async def estimate_calories_direct(
+      self,
+      food_name: str,
+      quantity: float | None,
+      unit: str | None,
+  ) -> float | None:
+    """
+    Ask the LLM to estimate calories using its own nutrition knowledge.
+    Used as a last-resort fallback when local DB and USDA lookups both fail.
+    """
+    unit_phrase = f"{quantity} {unit}" if unit else (str(quantity) if quantity else "some")
+    prompt = f"""You are a nutrition expert.
+
+Estimate the total calories in {unit_phrase} of "{food_name}" as typically consumed (fresh, unprocessed, home-cooking form).
+
+Reply with ONLY a single integer (total kcal). No units. No explanation.
+Examples:
+  2 cup of whole milk → 290
+  1 medium banana → 105
+  1 slice of bread → 80"""
+
+    resp = await self.chat([{"role": "user", "content": prompt}], think=False)
+    raw = resp["message"]["content"].strip()
+    raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+    match = re.search(r'\d+(?:\.\d+)?', raw)
+    if match:
+      try:
+        return float(match.group())
+      except ValueError:
+        pass
+    return None
+
+  async def sanity_check_calories(
+      self,
+      food_name: str,
+      quantity: float | None,
+      unit: str | None,
+      computed_calories: float,
+  ) -> float | None:
+    """
+    Ask the LLM if a computed calorie value is plausible for the given food and portion.
+    Returns None if the value looks correct, or a corrected kcal total if it's clearly wrong.
+    """
+    unit_phrase = f"{quantity} {unit}" if unit else (str(quantity) if quantity else "some")
+    prompt = f"""You are a nutrition fact-checker.
+
+Computed estimate: {round(computed_calories)} kcal for {unit_phrase} of "{food_name}".
+
+Quick references (per 100 g): whole milk 61, skim milk 35, heavy cream 340, condensed milk 321, \
+milk powder 496, butter 717, olive oil 884, white rice 130, chicken breast 165, egg 143.
+
+Is this estimate reasonable for a typical home-cooking portion?
+- If yes, reply with exactly: ok
+- If it is clearly wrong (off by 3x or more), reply with the correct total kcal as a plain integer only.
+
+Reply with ONLY "ok" or an integer. No explanation."""
+
+    resp = await self.chat([{"role": "user", "content": prompt}], think=False)
+    raw = resp["message"]["content"].strip()
+    raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+    if raw.lower().startswith("ok"):
+      return None
+    match = re.search(r'\d+(?:\.\d+)?', raw)
+    if match:
+      try:
+        return float(match.group())
+      except ValueError:
+        pass
     return None
 
   async def build_document(self, recipe: dict) -> str:
