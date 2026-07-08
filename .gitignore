@@ -5,3 +5,4 @@ nul
 node_modules
 .aws-sam
 .env
+helpers/working/
