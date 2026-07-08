@@ -103,6 +103,74 @@ docker compose -p fm-dev exec llm_api alembic upgrade head
 alembic revision --autogenerate -m "describe change"
 ```
 
+## Promoting data from dev to prod
+
+The dev and prod stacks each have isolated Docker volumes (`fm-dev_postgres_data` vs `fm-prod_postgres_data`). The steps below move the **ingredient and recipe catalog** from dev → prod without touching users, families, or any other prod-only configuration.
+
+All commands run from the `deployment/` directory.
+
+### Prerequisites
+
+- Both stacks must be running (`fm-dev` and `fm-prod`).
+- Prod must have had its migrations applied at least once (`alembic upgrade head`) so the schema exists.
+
+### 1. Dump the catalog tables from dev
+
+```bash
+docker compose -p fm-dev exec -T postgres \
+  pg_dump -U postgres fm_db \
+  --data-only \
+  --table=ingredients \
+  --table=recipes \
+  --table=recipe_ingredients \
+  > catalog_$(date +%Y%m%d).sql
+```
+
+This produces a plain-SQL file (e.g. `catalog_20260708.sql`) in `deployment/`. The dump includes `setval` calls so auto-increment sequences are restored correctly.
+
+### 2. Clear the catalog in prod
+
+Truncate in dependency order to avoid FK violations. `RESTART IDENTITY` resets sequences so new IDs won't collide with the incoming data.
+
+```bash
+docker compose -p fm-prod exec postgres \
+  psql -U postgres fm_db -c \
+  "TRUNCATE recipe_ingredients, recipes, ingredients RESTART IDENTITY CASCADE;"
+```
+
+> **Warning:** `CASCADE` also truncates `family_recipe_statuses` and `calorie_logs` because they reference `recipes`. Any saved recipe statuses and calorie log history in prod will be lost.
+>
+> **TODO:** this process needs improvement — ideally the promotion script would back up `calorie_logs` and `family_recipe_statuses` before truncating and restore them afterward, filtering out rows whose `recipe_id` no longer exists. Until then, treat this as a destructive operation and only run it when losing that data is acceptable.
+
+### 3. Load into prod
+
+```bash
+docker compose -p fm-prod exec -T postgres \
+  psql -U postgres fm_db \
+  < catalog_$(date +%Y%m%d).sql
+```
+
+Replace the date suffix with the filename from step 1 if running on a different day.
+
+### 4. Re-sync ChromaDB embeddings
+
+The llm_api vector store (ChromaDB) is separate from Postgres and holds the recipe embeddings used for semantic search. After loading new recipe data, rebuild the index:
+
+```bash
+docker compose -p fm-prod restart llm_api
+```
+
+The llm_api calls back to fm_api on startup to sync recipe data into ChromaDB. Allow 30–60 seconds for indexing to complete before testing recommendations.
+
+### Notes
+
+- **Family IDs are stable:** both stacks seed a `default_family` (id=1) at first startup. Recipes are owned by that family, so the FK resolves cleanly after restore.
+- **Users are not touched:** only the three catalog tables are affected. Prod users, families, and JWT config are preserved.
+- **Safe to re-run:** step 2 always clears first, so running the full sequence twice produces the same result.
+- **llm_api DB is not migrated:** the `llm_api` Postgres database holds crawler state and job history, not the primary recipe catalog. It does not need to be promoted — restarting llm_api after step 3 is sufficient.
+
+---
+
 ## Architecture
 
 ```
