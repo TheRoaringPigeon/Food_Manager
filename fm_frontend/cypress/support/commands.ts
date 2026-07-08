@@ -14,10 +14,15 @@ Cypress.Commands.add('login', (role: 'admin' | 'standard' = 'standard') => {
   localStorage.setItem('fm_user', JSON.stringify(user))
 })
 
+Cypress.Commands.add('seedCart', (recipeIds: number[] = [], ingredientIds: number[] = []) => {
+  localStorage.setItem('fm_cart', JSON.stringify({ recipeIds, ingredientIds }))
+})
+
 declare global {
   namespace Cypress {
     interface Chainable {
       login(role?: 'admin' | 'standard'): void
+      seedCart(recipeIds?: number[], ingredientIds?: number[]): void
     }
   }
 }

@@ -17,7 +17,11 @@
       "PowerShell(aws bedrock list-inference-profiles *)",
       "Bash(python *)",
       "Skill(run)",
-      "Bash(*cypress*)"
+      "Bash(*cypress*)",
+      "Skill(update-config)",
+      "Bash(curl*localhost:5173*)",
+      "Bash(npm run dev)",
+      "Bash(npm run cy*)"
     ],
     "deny": [
       "Read(.env)",
