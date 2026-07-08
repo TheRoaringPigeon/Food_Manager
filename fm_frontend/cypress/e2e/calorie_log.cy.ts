@@ -118,6 +118,46 @@ function makeSpeechStub(transcript: string) {
   }
 }
 
+// Simulates mobile Chrome (webkitSpeechRecognition) where each onresult event has
+// resultIndex=0 and re-delivers all previous final results in the results array.
+// This triggers the duplicate-accumulation bug when finalAccumulated is used.
+function makeMobileChromeSpeechStub(part1: string, part2: string) {
+  return (win: Cypress.AUTWindow) => {
+    function SpeechRecognitionStub(this: any) {
+      this.continuous = true
+      this.interimResults = true
+      this.lang = ''
+      this.start = function () {
+        // Event 1: first segment finalised
+        this.onresult?.({
+          resultIndex: 0,
+          results: [{ 0: { transcript: part1 }, isFinal: true, length: 1 }],
+        })
+        // Event 2: first segment re-delivered (resultIndex still 0), second segment interim
+        this.onresult?.({
+          resultIndex: 0,
+          results: [
+            { 0: { transcript: part1 }, isFinal: true, length: 1 },
+            { 0: { transcript: part2 }, isFinal: false, length: 1 },
+          ],
+        })
+        // Event 3: first segment re-delivered again, second segment finalised
+        this.onresult?.({
+          resultIndex: 0,
+          results: [
+            { 0: { transcript: part1 }, isFinal: true, length: 1 },
+            { 0: { transcript: part2 }, isFinal: true, length: 1 },
+          ],
+        })
+      }
+      this.stop = function () { this.onend?.() }
+      this.abort = function () {}
+    }
+    delete (win as any).SpeechRecognition
+    ;(win as any).webkitSpeechRecognition = SpeechRecognitionStub
+  }
+}
+
 describe('Voice tab', () => {
   beforeEach(() => {
     cy.login()
@@ -151,6 +191,26 @@ describe('Voice tab', () => {
     cy.contains('button', 'Voice').click()
     cy.get('button.rounded-full').click()
     cy.contains('Speech recognition is not supported in this browser').should('be.visible')
+  })
+
+  it('does not duplicate text on mobile Chrome (webkitSpeechRecognition re-delivering results)', () => {
+    // Mobile Chrome fires onresult with resultIndex=0 on every event, re-delivering all
+    // previously finalised results. Without the fix the textarea would show something like
+    // "I had a I had a I had a granola bar" instead of "I had a granola bar".
+    cy.visit(pages.calorieLog, {
+      onBeforeLoad: makeMobileChromeSpeechStub('I had a ', 'granola bar'),
+    })
+    cy.wait('@today')
+    cy.wait('@history')
+    cy.wait('@logsBase')
+
+    cy.contains('button', 'Voice').click()
+    cy.get('button.rounded-full').click()
+    cy.contains('Listening…').should('be.visible')
+
+    cy.contains('button', 'Stop').click()
+
+    cy.get('textarea').should('have.value', 'I had a granola bar')
   })
 
   it('captures transcript, enters review state, and POSTs to the voice-log API', () => {
