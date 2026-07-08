@@ -15,7 +15,9 @@
       "PowerShell(aws cloudformation describe-stacks *)",
       "PowerShell(aws cloudformation describe-stack-resources *)",
       "PowerShell(aws bedrock list-inference-profiles *)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Skill(run)",
+      "Bash(*cypress*)"
     ],
     "deny": [
       "Read(.env)",
