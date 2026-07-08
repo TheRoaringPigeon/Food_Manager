@@ -263,19 +263,21 @@ export default function CalorieLogPage() {
     recognition.interimResults = true
     recognition.lang = 'en-US'
 
-    let finalAccumulated = ''
-
     recognition.onresult = (e: any) => {
+      // Rebuild from all results on every event (don't use e.resultIndex as the start).
+      // Mobile Chrome re-delivers already-final results with resultIndex=0 on each event,
+      // so a closure accumulator would double-count them ("I had aI had a granola bar").
+      let finalText = ''
       let interim = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      for (let i = 0; i < e.results.length; i++) {
         const t = e.results[i][0].transcript
         if (e.results[i].isFinal) {
-          finalAccumulated += t
+          finalText += t
         } else {
           interim = t
         }
       }
-      setEditableTranscript(finalAccumulated)
+      setEditableTranscript(finalText)
       setInterimText(interim)
     }
 
