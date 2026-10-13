@@ -1,4 +1,5 @@
 import './commands'
+import '@cypress/code-coverage/support'
 
 // Vite's HMR client is configured with clientPort: 5173 in vite.config.ts,
 // so the browser polls that port for hot-reload events even when the app is

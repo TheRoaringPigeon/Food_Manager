@@ -6,3 +6,7 @@ node_modules
 .aws-sam
 .env
 helpers/working/
+.coverage
+htmlcov/
+coverage/
+.nyc_output/

@@ -312,4 +312,177 @@ describe('Voice tab', () => {
     cy.wait('@createLog')
     cy.contains('Pending Approval').should('not.exist')
   })
+
+  it('shows (llm) source badge for items resolved via LLM direct fallback', () => {
+    const JOB_ID = 'job-llm-source'
+    cy.intercept('GET', `${LLM_API}/voice-log/jobs/${JOB_ID}`, {
+      body: {
+        status: 'done',
+        transcript: 'I had 2 cups of milk',
+        items: [
+          { name: 'milk', quantity: 2, unit: 'cup', calories: 290, source: 'llm' },
+        ],
+        error: null,
+      },
+    }).as('jobPoll')
+
+    cy.visit(pages.calorieLog, {
+      onBeforeLoad(win) {
+        win.localStorage.setItem('fm_voice_pending_jobs', JSON.stringify([JOB_ID]))
+      },
+    })
+    cy.wait('@today')
+    cy.wait('@history')
+    cy.wait('@logsBase')
+    cy.wait('@jobPoll')
+
+    cy.contains('Pending Approval').should('be.visible')
+    cy.contains('milk').should('be.visible')
+    cy.contains('290 kcal').should('be.visible')
+    cy.contains('(llm)').should('be.visible')
+  })
+
+  it('shows manual calorie input when calories are null', () => {
+    const JOB_ID = 'job-null-calories'
+    cy.intercept('GET', `${LLM_API}/voice-log/jobs/${JOB_ID}`, {
+      body: {
+        status: 'done',
+        transcript: 'I had some mystery food',
+        items: [
+          { name: 'mystery food', quantity: 1, unit: 'piece', calories: null, source: 'unknown' },
+        ],
+        error: null,
+      },
+    }).as('jobPoll')
+
+    cy.visit(pages.calorieLog, {
+      onBeforeLoad(win) {
+        win.localStorage.setItem('fm_voice_pending_jobs', JSON.stringify([JOB_ID]))
+      },
+    })
+    cy.wait('@today')
+    cy.wait('@history')
+    cy.wait('@logsBase')
+    cy.wait('@jobPoll')
+
+    cy.contains('mystery food').should('be.visible')
+    cy.get('input[placeholder="kcal"]').should('be.visible')
+    // Log button disabled until user enters a value
+    cy.contains('button', 'Log').should('be.disabled')
+  })
+
+  it('enables the Log button and submits when user enters manual calories', () => {
+    const JOB_ID = 'job-manual-cal'
+    cy.intercept('GET', `${LLM_API}/voice-log/jobs/${JOB_ID}`, {
+      body: {
+        status: 'done',
+        transcript: 'I had some mystery food',
+        items: [
+          { name: 'mystery food', quantity: 1, unit: 'piece', calories: null, source: 'unknown' },
+        ],
+        error: null,
+      },
+    }).as('jobPoll')
+    cy.intercept('POST', api('/calorie-logs'), {
+      statusCode: 201,
+      body: {
+        id: 55, entry_type: 'freeform', food_name: 'mystery food (1 piece)', calories: 150,
+        meal_type: 'dinner', logged_at: '2026-07-07T10:00:00',
+        notes: null, quantity_grams: null, servings_eaten: null,
+        ingredient_id: null, recipe_id: null,
+      },
+    }).as('createLog')
+
+    cy.visit(pages.calorieLog, {
+      onBeforeLoad(win) {
+        win.localStorage.setItem('fm_voice_pending_jobs', JSON.stringify([JOB_ID]))
+      },
+    })
+    cy.wait('@today')
+    cy.wait('@history')
+    cy.wait('@logsBase')
+    cy.wait('@jobPoll')
+
+    cy.get('input[placeholder="kcal"]').type('150')
+    cy.contains('button', 'Log').should('not.be.disabled').click()
+    cy.wait('@createLog').its('request.body.calories').should('equal', 150)
+  })
+
+  it('approves a single item from a multi-item pending entry', () => {
+    const JOB_ID = 'job-single-approve'
+    cy.intercept('GET', `${LLM_API}/voice-log/jobs/${JOB_ID}`, {
+      body: {
+        status: 'done',
+        transcript: 'I had an apple and a banana',
+        items: [
+          { name: 'apple', quantity: 1, unit: null, calories: 95, source: 'local' },
+          { name: 'banana', quantity: 1, unit: null, calories: 89, source: 'usda' },
+        ],
+        error: null,
+      },
+    }).as('jobPoll')
+    cy.intercept('POST', api('/calorie-logs'), {
+      statusCode: 201,
+      body: {
+        id: 77, entry_type: 'freeform', food_name: 'apple (1)', calories: 95,
+        meal_type: 'dinner', logged_at: '2026-07-07T10:00:00',
+        notes: null, quantity_grams: null, servings_eaten: null,
+        ingredient_id: null, recipe_id: null,
+      },
+    }).as('createLog')
+
+    cy.visit(pages.calorieLog, {
+      onBeforeLoad(win) {
+        win.localStorage.setItem('fm_voice_pending_jobs', JSON.stringify([JOB_ID]))
+      },
+    })
+    cy.wait('@today')
+    cy.wait('@history')
+    cy.wait('@logsBase')
+    cy.wait('@jobPoll')
+
+    // Both items visible initially
+    cy.contains('apple').should('be.visible')
+    cy.contains('banana').should('be.visible')
+
+    // Click Log on the first item's row (the apple row)
+    cy.contains('apple').parents('[class*="flex-col"]').first().contains('button', 'Log').click()
+    cy.wait('@createLog')
+
+    // Apple row removed; banana still pending
+    cy.contains('apple').should('not.exist')
+    cy.contains('banana').should('be.visible')
+    cy.contains('Pending Approval').should('be.visible')
+  })
+
+  it('regression: 2 cups of milk shows ~290 kcal and not ~2000 kcal', () => {
+    // This test guards the calorie sanity fix end-to-end at the UI layer.
+    // The backend would have corrected 2350 → 290; we verify the UI renders that correctly.
+    const JOB_ID = 'job-milk-regression'
+    cy.intercept('GET', `${LLM_API}/voice-log/jobs/${JOB_ID}`, {
+      body: {
+        status: 'done',
+        transcript: 'I had 2 cups of milk',
+        items: [
+          { name: 'milk', quantity: 2, unit: 'cup', calories: 290, source: 'usda' },
+        ],
+        error: null,
+      },
+    }).as('jobPoll')
+
+    cy.visit(pages.calorieLog, {
+      onBeforeLoad(win) {
+        win.localStorage.setItem('fm_voice_pending_jobs', JSON.stringify([JOB_ID]))
+      },
+    })
+    cy.wait('@today')
+    cy.wait('@history')
+    cy.wait('@logsBase')
+    cy.wait('@jobPoll')
+
+    cy.contains('milk').should('be.visible')
+    cy.contains('290 kcal').should('be.visible')
+    cy.contains('2350 kcal').should('not.exist')
+    cy.contains('2000 kcal').should('not.exist')
+  })
 })

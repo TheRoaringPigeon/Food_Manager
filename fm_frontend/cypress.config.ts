@@ -1,5 +1,6 @@
 import { defineConfig } from 'cypress'
 import { readFileSync } from 'node:fs'
+import codeCoverage from '@cypress/code-coverage/task'
 
 function readDeploymentEnv(): Record<string, string> {
   try {
@@ -44,6 +45,14 @@ export default defineConfig({
     viewportHeight: 800,
     env: {
       apiBase: `${basePath}/api`,
+      codeCoverage: {
+        url: '/api/__coverage__',
+        expectBackendCoverageOnly: false,
+      },
+    },
+    setupNodeEvents(on, config) {
+      codeCoverage(on, config)
+      return config
     },
   },
 })

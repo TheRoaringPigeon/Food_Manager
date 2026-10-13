@@ -44,16 +44,45 @@ npm run dev   # → http://localhost:5173
 
 ## Tests
 
-### Backend (pytest)
+### Backend (pytest — fm_api)
 
-Tests use an in-memory SQLite DB — no running Postgres needed.
+Tests use an in-memory SQLite DB — no running Postgres needed. Each test gets a fresh DB via the `setup_db` fixture.
 
 ```bash
 cd fm_api
-pytest                                              # all tests
-pytest tests/test_health.py -v                     # single file
-pytest tests/test_health.py::test_health_endpoint  # single test
+
+# Run all tests
+.venv\Scripts\pytest.exe
+
+# Single file or single test
+.venv\Scripts\pytest.exe tests/test_auth.py -v
+.venv\Scripts\pytest.exe tests/test_health.py::test_health_endpoint
+
+# Run with coverage (terminal summary)
+.venv\Scripts\pytest.exe --cov=. --cov-report=term-missing
+
+# Generate HTML coverage report → open fm_api/htmlcov/index.html
+.venv\Scripts\pytest.exe --cov=. --cov-report=html
 ```
+
+> **Note:** Two tests (`TestDailyHistory`) are skipped automatically because they use PostgreSQL-specific `interval` syntax that SQLite does not support. They are covered by Cypress tests against the real stack.
+
+#### Test fixtures
+
+| Fixture | Auth | Role | Family |
+|---------|------|------|--------|
+| `client` | none | — | — |
+| `auth_client` | JWT | standard | yes |
+| `admin_client` | JWT | admin | yes |
+
+### Backend (pytest — llm_api)
+
+```bash
+cd llm_api
+.venv\Scripts\pytest.exe
+```
+
+These tests mock all external dependencies (Ollama, USDA API, Redis) so no services need to be running.
 
 ### Frontend E2E (Cypress)
 
@@ -89,6 +118,22 @@ Create `fm_frontend/cypress.env.json` (already gitignored) to override defaults:
 ```
 
 The `baseUrl` is built from `port` + `VITE_BASE_PATH` (read from `deployment/.env` automatically). Specs live in `cypress/e2e/*.cy.ts`.
+
+### Frontend code coverage (Cypress + Istanbul)
+
+Istanbul instrumentation is injected into the Vite build when `VITE_COVERAGE=true`. Run the dev server with instrumentation in one terminal, Cypress in another:
+
+```bash
+# Terminal 1 — instrumented dev server
+cd fm_frontend
+$env:VITE_COVERAGE="true"; npm run dev
+
+# Terminal 2 — run Cypress against it
+cd fm_frontend
+npm run cy:run
+```
+
+The coverage report is written to `fm_frontend/coverage/` (HTML + lcov). Open `fm_frontend/coverage/index.html` to browse it.
 
 ## Database migrations
 
